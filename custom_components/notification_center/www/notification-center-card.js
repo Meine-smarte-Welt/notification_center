@@ -201,16 +201,43 @@ class NotificationCenterCard extends HTMLElement {
     this._callService("persistent_notification", "dismiss_all", {});
   }
 
+  _captureFocus() {
+    const root = this.shadowRoot;
+    const active = root && root.activeElement;
+    if (!active || !active.hasAttribute("data-role")) return null;
+    return {
+      role: active.getAttribute("data-role"),
+      selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
+      selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null,
+    };
+  }
+
+  _restoreFocus(saved) {
+    if (!saved) return;
+    const el = this.shadowRoot.querySelector(`[data-role="${saved.role}"]`);
+    if (!el) return;
+    el.focus();
+    if (saved.selectionStart !== null && typeof el.setSelectionRange === "function") {
+      try {
+        el.setSelectionRange(saved.selectionStart, saved.selectionEnd);
+      } catch (err) {
+        /* manche Input-Typen erlauben keine Selection-Range - ignorieren */
+      }
+    }
+  }
+
   _render() {
     if (!this._config || !this._hass || !this.shadowRoot) return;
+
+    const savedFocus = this._captureFocus();
 
     const visibleCategories = this._visibleCategories();
     const showTitle = this._config.show_title !== false;
     const title = this._config.title || DEFAULT_TITLE;
-    const headerIcon = this._config.icon || DEFAULT_ICON;
+    const headerIcon = typeof this._config.icon === "undefined" ? DEFAULT_ICON : this._config.icon;
 
     const headerHtml = showTitle
-      ? `<div class="header"><ha-icon icon="${headerIcon}"></ha-icon><span>${escapeHtml(title)}</span></div>`
+      ? `<div class="header">${headerIcon ? `<ha-icon icon="${headerIcon}"></ha-icon>` : ""}<span>${escapeHtml(title)}</span></div>`
       : "";
 
     if (!visibleCategories.length) {
@@ -223,6 +250,7 @@ class NotificationCenterCard extends HTMLElement {
             <span>Alle Kategorien sind ausgeblendet</span>
           </div>
         </ha-card>`;
+      this._restoreFocus(savedFocus);
       return;
     }
 
@@ -268,7 +296,7 @@ class NotificationCenterCard extends HTMLElement {
                showSearch
                  ? `<div class="toolbar">
                       <ha-icon icon="mdi:magnify"></ha-icon>
-                      <input type="text" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
+                      <input type="text" data-role="search" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
                     </div>`
                  : ""
              }
@@ -312,6 +340,7 @@ class NotificationCenterCard extends HTMLElement {
     `;
 
     this._attachListeners();
+    this._restoreFocus(savedFocus);
   }
 
   _renderRow(category, def, item) {
@@ -794,16 +823,51 @@ class NotificationCenterCardEditor extends HTMLElement {
           padding: 4px 0;
         }
         .reset-btn ha-icon { --mdc-icon-size: 18px; }
+        .widget-hint {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 1px solid var(--divider-color, #e0e0e0);
+        }
+        .widget-hint p {
+          margin: 0 0 8px;
+          font-size: 0.85rem;
+          color: var(--secondary-text-color);
+        }
+        .widget-snippet {
+          margin: 0 0 8px;
+          padding: 8px 10px;
+          border-radius: 6px;
+          background: var(--secondary-background-color, rgba(0,0,0,0.04));
+          font-family: var(--code-font-family, monospace);
+          font-size: 0.82rem;
+          white-space: pre-wrap;
+          word-break: break-word;
+          color: var(--primary-text-color);
+        }
+        .copy-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          border: none;
+          background: var(--primary-color);
+          color: var(--text-primary-color, white);
+          border-radius: 8px;
+          padding: 6px 12px;
+          cursor: pointer;
+          font: inherit;
+          font-size: 0.85rem;
+        }
+        .copy-btn ha-icon { --mdc-icon-size: 16px; }
       </style>
       <div class="editor-list" id="list"></div>
     `;
     const list = this.shadowRoot.getElementById("list");
     this._forms = [];
 
-    // --- Sensoren ---
-    const sensorsPanel = this._section("Sensoren", "mdi:database-outline", true);
-    const sensorsBody = document.createElement("div");
-    sensorsBody.className = "section-body";
+    // --- Widgets (Sensor-Zuordnung + Android-Template-Widget) ---
+    const widgetsPanel = this._section("Widgets", "mdi:widgets-outline", true);
+    const widgetsBody = document.createElement("div");
+    widgetsBody.className = "section-body";
     const sensorsForm = document.createElement("ha-form");
     sensorsForm.schema = [
       { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
@@ -815,9 +879,49 @@ class NotificationCenterCardEditor extends HTMLElement {
       this._config = this._unflatten(ev.detail.value, this._config);
       this._emit();
     });
-    sensorsBody.appendChild(sensorsForm);
-    sensorsPanel.appendChild(sensorsBody);
-    list.appendChild(sensorsPanel);
+    widgetsBody.appendChild(sensorsForm);
+
+    const widgetHint = document.createElement("div");
+    widgetHint.className = "widget-hint";
+    widgetHint.innerHTML = `
+      <p>Zum Einfügen in ein Android-Template-Widget der Home-Assistant-App:</p>
+      <pre class="widget-snippet" data-widget-snippet></pre>
+      <button class="copy-btn" data-copy-widget>
+        <ha-icon icon="mdi:content-copy"></ha-icon>
+        <span>Quelltext kopieren</span>
+      </button>
+    `;
+    widgetsBody.appendChild(widgetHint);
+    this._widgetSnippetEl = widgetHint.querySelector("[data-widget-snippet]");
+    const copyBtn = widgetHint.querySelector("[data-copy-widget]");
+    copyBtn.addEventListener("click", async () => {
+      const text = this._widgetSnippetText();
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (err) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand("copy");
+        } catch (copyErr) {
+          /* Zwischenablage nicht verfügbar - ignorieren */
+        }
+        document.body.removeChild(textarea);
+      }
+      const label = copyBtn.querySelector("span");
+      const original = label.textContent;
+      label.textContent = "Kopiert!";
+      setTimeout(() => {
+        label.textContent = original;
+      }, 1500);
+    });
+
+    widgetsPanel.appendChild(widgetsBody);
+    list.appendChild(widgetsPanel);
     this._forms.push(sensorsForm);
 
     // --- Darstellung ---
@@ -916,15 +1020,33 @@ class NotificationCenterCardEditor extends HTMLElement {
     });
   }
 
+  _widgetSnippetText() {
+    const entities = (this._config && this._config.entities) || {};
+    const lines = [];
+    if (entities.notifications) lines.push(`{{ states('${entities.notifications}') }} Benachrichtigung(en)`);
+    if (entities.updates) lines.push(`{{ states('${entities.updates}') }} Update(s)`);
+    if (entities.repairs) lines.push(`{{ states('${entities.repairs}') }} Reparatur(en)`);
+    if (!lines.length) return "Bitte zuerst oben die Sensoren zuweisen.";
+    return lines.join("\n");
+  }
+
   _syncFromConfig() {
     const flat = this._flatten(this._config);
     this._forms.forEach((form) => (form.data = flat));
     ["color_notification", "color_update", "color_repair"].forEach((key) => {
-      const value = this._config[key] || "";
       const pair = this._colorInputs[key];
+      // Während der Nutzer im Textfeld tippt, nicht überschreiben: setConfig()
+      // läuft nach jedem Tastendruck erneut (via config-changed -> Editor-Host
+      // -> setConfig), und ein Reset mitten im Tippen hätte das Feld immer
+      // wieder auf den zuletzt bestätigten Wert zurückgesetzt.
+      if (this.shadowRoot.activeElement === pair.text) return;
+      const value = this._config[key] || "";
       pair.text.value = value;
       pair.swatch.value = HEX_RE.test(value) ? value : "#000000";
     });
+    if (this._widgetSnippetEl) {
+      this._widgetSnippetEl.textContent = this._widgetSnippetText();
+    }
   }
 
   _emit() {
@@ -952,7 +1074,7 @@ class NotificationCenterCardEditor extends HTMLElement {
     return {
       title: config.title || "",
       show_title: config.show_title !== false,
-      icon: config.icon || DEFAULT_ICON,
+      icon: typeof config.icon === "undefined" ? DEFAULT_ICON : config.icon,
       entity_notifications: entities.notifications || "",
       entity_updates: entities.updates || "",
       entity_repairs: entities.repairs || "",

@@ -1,7 +1,7 @@
 # Notification Center
 
 <p align="center">
-  <img src="custom_components/notification_center/brand/icon.png" width="96" alt="Notification Center Icon">
+  <img src="https://raw.githubusercontent.com/Meine-smarte-Welt/notification_center/main/custom_components/notification_center/brand/icon.png" width="96" alt="Notification Center Icon">
 </p>
 
 Eine Home-Assistant-Integration, die **Benachrichtigungen**, **Updates** und
@@ -106,7 +106,7 @@ dem aktiven Theme.
 
 ### Editor in Abschnitten
 
-Der grafische Editor ist in aufklappbare Abschnitte gegliedert - Sensoren,
+Der grafische Editor ist in aufklappbare Abschnitte gegliedert - Widgets,
 Darstellung, Kategorien, Farben - ebenfalls wie bei den anderen
 Integrationen.
 
@@ -114,14 +114,18 @@ Integrationen.
 
 Die Sensoren sind bewusst so aufgebaut, dass sie sich direkt in ein
 **Template-Widget** der Home-Assistant-Companion-App einsetzen lassen, ohne
-zusätzliche Helper oder Automationen:
+zusätzliche Helper oder Automationen. Im Editor-Abschnitt *Widgets* steht
+dafür bereits der fertige, auf die zugewiesenen Sensoren zugeschnittene
+Quelltext mit einem *Quelltext kopieren*-Button - besonders praktisch am
+Smartphone, um ihn direkt im Widget-Bereich der Android-App wieder
+einzufügen:
 
 ```
 {{ state_attr('sensor.notification_center_updates', 'summary') }}
 ```
 
 Für alle drei Kategorien auf einen Blick, z. B. als mehrzeiliges
-Template-Widget:
+Template-Widget (genau das liefert der Kopieren-Button im Editor):
 
 ```
 {{ states('sensor.notification_center_benachrichtigungen') }} Benachrichtigung(en)
@@ -134,6 +138,28 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.1b4 – Such-/Farbfeld-Fix, Widgets-Abschnitt, Icon leerbar, README-Icon
+
+- **Bugfix Suche:** Zeichen gingen teilweise verloren, weil jede Eingabe die
+  komplette Karte neu aufgebaut hat (`innerHTML`) und dabei das Eingabefeld
+  samt Fokus zerstört wurde. Fokus und Cursor-Position werden jetzt vor dem
+  Neuaufbau gesichert und danach wiederhergestellt.
+- **Bugfix Farbfeld (Editor):** aus demselben Grund - jeder Tastendruck löst
+  über `config-changed` einen erneuten `setConfig()`-Aufruf aus, der das
+  Textfeld sonst mitten im Tippen auf den letzten bestätigten Wert
+  zurückgesetzt hat. Das Feld wird jetzt nicht mehr angefasst, während es den
+  Fokus hat.
+- **Bugfix Icon leeren:** ein im Editor geleertes Icon-Feld wurde beim
+  nächsten Sync sofort wieder mit dem Standard-Icon aufgefüllt. Ein
+  ausdrücklich leeres Icon wird jetzt respektiert - die Kopfzeile zeigt dann
+  gar kein Icon, nur den Titel.
+- Editor-Abschnitt *Sensoren* umbenannt in **Widgets**: enthält weiterhin die
+  drei Sensor-Zuweisungen, zusätzlich den fertigen Android-Template-Widget-
+  Quelltext mit *Quelltext kopieren*-Button
+- Icon im README zeigt nicht mehr auf einen relativen Pfad (den HACS beim
+  Rendern nicht auflöst), sondern auf die absolute `raw.githubusercontent.com`-
+  URL
 
 ### 0.0.1b3 – Bugfix: Editor-Absturz "Cannot read properties of undefined"
 
@@ -218,6 +244,12 @@ und hat Vorrang vor der zentralen `home-assistant/brands`-Datenbank. Eine
 separate Einreichung per Pull Request ist damit nicht mehr nötig; einzig auf
 älteren Home-Assistant-Versionen (vor 2026.3) greift das Icon nicht und es
 erscheint stattdessen ein Platzhalter.
+
+Die README-Vorschau oben verlinkt das Icon absolut über
+`raw.githubusercontent.com` statt über einen relativen Pfad - HACS rendert
+das README zwar, löst relative Bildpfade dabei aber nicht zuverlässig auf,
+sodass das Icon dort sonst als kaputtes Bild erscheint. Passe die URL an,
+falls Repository-Name oder Branch abweichen.
 
 ## Lizenz
 

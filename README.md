@@ -129,6 +129,12 @@ Einträgen erscheint ein grünes „✓ Alles erledigt“. *Alle drei zusammen* 
 je Kategorie die Kopfzeile mit den ersten zwei Titeln; Kategorien ohne
 Einträge sind grau.
 
+**Trennlinien:** Android-Widgets kennen kein `<hr>`. Die Linien bestehen deshalb
+aus einer Reihe von „─“-Zeichen in Hellgrau zwischen den Einträgen bzw.
+Kategorien. Die Länge steht als `{%- set line = '────…' -%}` ganz oben im
+Quelltext - bei einem schmalen Widget einfach ein paar Zeichen löschen, bei
+einem breiten welche ergänzen.
+
 **Grenzen des Template-Widgets:** Die Companion-App rendert hier nur einfaches
 HTML (`<b>`, `<big>`, `<small>`, `<font color>`, `<br>`). Karten mit
 abgerundeten Zeilen, Icons und Buttons wie beim Gmail-Widget sind damit nicht
@@ -140,6 +146,12 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.6 – Trennlinien in den Widgets
+
+- Hellgraue Trennlinie zwischen den Einträgen, vor „+ n weitere“ und im Widget
+  „Alle drei zusammen“ zwischen den Kategorien
+- Länge der Linie über die Variable `line` am Anfang des Quelltexts anpassbar
 
 ### 0.0.5 – Widgets im Stil einer Mail-Übersicht
 

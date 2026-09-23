@@ -926,6 +926,14 @@ const WIDGET_SENSORS = [
 ];
 const WIDGET_OK_HEX = "#43a047";
 const WIDGET_MUTED_HEX = "#9e9e9e";
+// Trennlinie: Android-Widgets kennen kein <hr>, deshalb eine Reihe von
+// "─"-Zeichen in Hellgrau. Die Länge steht als Variable `line` am Anfang des
+// Quelltexts und lässt sich dort einfach kürzen/verlängern, falls das Widget
+// schmaler oder breiter ist.
+const WIDGET_LINE_HEX = "#bdbdbd";
+const WIDGET_LINE_TEXT = "─".repeat(24);
+const WIDGET_LINE_SET = `{%- set line = '${WIDGET_LINE_TEXT}' -%}`;
+const WIDGET_LINE_HTML = `<small><font color="${WIDGET_LINE_HEX}">{{ line }}</font></small><br>`;
 
 class NotificationCenterCardEditor extends HTMLElement {
   constructor() {
@@ -1226,6 +1234,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       ? `<big><b><font color="${color}">${def.label}</font> ({{ n }})</b></big>`
       : `<b><font color="${color}">${def.label}</font> ({{ n }})</b>`;
     return [
+      WIDGET_LINE_SET,
       `{%- set n = states('${entityId}') | int(0) -%}`,
       `{%- set items = state_attr('${entityId}', 'items') or [] -%}`,
       `${head}<br>`,
@@ -1235,9 +1244,9 @@ class NotificationCenterCardEditor extends HTMLElement {
       `{%- for i in items[:${maxItems}] -%}`,
       `<b>{{ i.title | e }}</b><br>`,
       `{%- if i.message -%}<small><font color="${WIDGET_MUTED_HEX}">{{ i.message | truncate(70) | e }}</font></small><br>{%- endif -%}`,
-      `{%- if not loop.last -%}<br>{%- endif -%}`,
+      `{%- if not loop.last -%}${WIDGET_LINE_HTML}{%- endif -%}`,
       `{%- endfor -%}`,
-      `{%- if n > ${maxItems} -%}<br><small><font color="${WIDGET_MUTED_HEX}">+ {{ n - ${maxItems} }} weitere</font></small>{%- endif -%}`,
+      `{%- if n > ${maxItems} -%}${WIDGET_LINE_HTML}<small><font color="${WIDGET_MUTED_HEX}">+ {{ n - ${maxItems} }} weitere</font></small>{%- endif -%}`,
       `{%- endif -%}`,
     ].join("\n");
   }
@@ -1251,6 +1260,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       // Alle Kategorien untereinander: je Kategorie eine Kopfzeile mit den
       // ersten zwei Einträgen. {% macro %} vermeidet dreifach kopierten Code.
       const macro = [
+        WIDGET_LINE_SET,
         `{%- macro block(label, color, n, items) -%}`,
         `<b><font color="{{ color if n else '${WIDGET_MUTED_HEX}' }}">{{ label }}</font> ({{ n }})</b><br>`,
         `{%- for i in items[:2] -%}<small>{{ i.title | e }}</small><br>{%- endfor -%}`,
@@ -1268,7 +1278,7 @@ class NotificationCenterCardEditor extends HTMLElement {
         .map(
           (d, i) =>
             `{{ block('${d.label}', '${this._widgetColor(d)}', n${i}, i${i}) }}` +
-            (i < defs.length - 1 ? "<br>" : "")
+            (i < defs.length - 1 ? WIDGET_LINE_HTML : "")
         )
         .join("\n");
       return [

@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Benachrichtigungszentrale einrichten",
+        "description": "Legt drei Sensoren an: Benachrichtigungen, Updates und Reparaturen. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Es kann nur eine Instanz eingerichtet werden."
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "domain": "notification_center",
+  "name": "Benachrichtigungszentrale",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/Meine-smarte-Welt/notification_center",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Meine-smarte-Welt/notification_center/issues",
+  "requirements": [],
+  "version": "0.0.1b0"
+}

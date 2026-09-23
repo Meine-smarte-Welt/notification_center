@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Notification Center",
+        "description": "Creates three sensors: notifications, updates and repairs. No credentials are needed, only one instance can be set up."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Only one instance is allowed."
+    }
+  }
+}

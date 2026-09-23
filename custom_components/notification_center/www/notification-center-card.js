@@ -149,7 +149,19 @@ class NotificationCenterCard extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
+    // Tippt der Nutzer gerade im Suchfeld, darf das Feld NICHT neu aufgebaut
+    // werden (Fokus/Tastatur gehen sonst verloren) - nur die Liste erneuern.
+    if (this._isSearchFocused()) {
+      this._updateList();
+      return;
+    }
     this._render();
+  }
+
+  _isSearchFocused() {
+    const root = this.shadowRoot;
+    const active = root && root.activeElement;
+    return !!(active && active.getAttribute && active.getAttribute("data-role") === "search");
   }
 
   getCardSize() {
@@ -176,7 +188,8 @@ class NotificationCenterCard extends HTMLElement {
 
   _colorFor(def) {
     const configured = this._config[def.colorKey];
-    return configured && configured.trim() ? configured.trim() : def.colorFallback;
+    const value = configured && String(configured).trim();
+    return value && SAFE_COLOR_RE.test(value) ? value : def.colorFallback;
   }
 
   _callService(domain, service, data) {
@@ -278,14 +291,6 @@ class NotificationCenterCard extends HTMLElement {
     const activeFilterId = this._activeFilter[this._activeTab] || "all";
     const activeFilterDef = filters.find((f) => f.id === activeFilterId) || filters[0];
 
-    const searchTerm = this._search.trim().toLowerCase();
-    const items = allItems.filter((item) => {
-      if (activeFilterDef && !activeFilterDef.test(item)) return false;
-      if (!searchTerm) return true;
-      const haystack = `${item.title || ""} ${item.message || ""}`.toLowerCase();
-      return haystack.includes(searchTerm);
-    });
-
     const showSearch = this._config.show_search !== false;
     const showDismissAll = this._activeTab === "notifications" && allItems.length > 0;
 
@@ -296,7 +301,7 @@ class NotificationCenterCard extends HTMLElement {
                showSearch
                  ? `<div class="toolbar">
                       <ha-icon icon="mdi:magnify"></ha-icon>
-                      <input type="text" data-role="search" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
+                      <input type="text" data-role="search" autocomplete="off" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
                     </div>`
                  : ""
              }
@@ -320,12 +325,7 @@ class NotificationCenterCard extends HTMLElement {
           </div>`
         : "";
 
-    const listHtml = items.length
-      ? items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("")
-      : `<div class="empty">
-           <ha-icon icon="mdi:check-circle-outline"></ha-icon>
-           <span>Keine offenen Einträge</span>
-         </div>`;
+    const listHtml = this._listHtml(activeDef);
 
     this.shadowRoot.innerHTML = `
       <style>${this._css()}</style>
@@ -341,6 +341,44 @@ class NotificationCenterCard extends HTMLElement {
 
     this._attachListeners();
     this._restoreFocus(savedFocus);
+  }
+
+  _visibleItems() {
+    const allItems = this._itemsFor(this._activeTab);
+    const filters = FILTER_DEFS[this._activeTab] || [];
+    const activeFilterId = this._activeFilter[this._activeTab] || "all";
+    const activeFilterDef = filters.find((f) => f.id === activeFilterId) || filters[0];
+    const searchTerm = this._search.trim().toLowerCase();
+    return allItems.filter((item) => {
+      if (activeFilterDef && !activeFilterDef.test(item)) return false;
+      if (!searchTerm) return true;
+      const haystack = `${item.title || ""} ${item.message || ""}`.toLowerCase();
+      return haystack.includes(searchTerm);
+    });
+  }
+
+  _listHtml(activeDef) {
+    const items = this._visibleItems();
+    return items.length
+      ? items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("")
+      : `<div class="empty">
+           <ha-icon icon="mdi:check-circle-outline"></ha-icon>
+           <span>Keine offenen Einträge</span>
+         </div>`;
+  }
+
+  // Erneuert NUR die Liste (Suche/hass-Update während des Tippens) - das
+  // Suchfeld bleibt dadurch unangetastet und behält Fokus und Tastatur.
+  _updateList() {
+    if (!this._config || !this._hass || !this.shadowRoot) return;
+    const listEl = this.shadowRoot.querySelector(".list");
+    const activeDef = CATEGORY_DEFS.find((d) => d.key === this._activeTab);
+    if (!listEl || !activeDef) {
+      this._render();
+      return;
+    }
+    listEl.innerHTML = this._listHtml(activeDef);
+    this._attachRowListeners();
   }
 
   _renderRow(category, def, item) {
@@ -438,7 +476,7 @@ class NotificationCenterCard extends HTMLElement {
       stopKeyPropagation(searchInput);
       searchInput.addEventListener("input", (ev) => {
         this._search = ev.target.value;
-        this._render();
+        this._updateList();
       });
     }
 
@@ -447,6 +485,12 @@ class NotificationCenterCard extends HTMLElement {
       dismissAllBtn.addEventListener("click", () => this._handleDismissAll());
     }
 
+    this._attachRowListeners();
+    this._attachPopupListeners();
+  }
+
+  _attachRowListeners() {
+    const root = this.shadowRoot;
     root.querySelectorAll(".row").forEach((rowEl) => {
       const category = rowEl.getAttribute("data-category");
       const itemId = rowEl.getAttribute("data-item-id");
@@ -467,6 +511,10 @@ class NotificationCenterCard extends HTMLElement {
       }
     });
 
+  }
+
+  _attachPopupListeners() {
+    const root = this.shadowRoot;
     const overlay = root.querySelector("[data-popup-overlay]");
     if (overlay) {
       const closePopup = () => {
@@ -729,20 +777,136 @@ class NotificationCenterCard extends HTMLElement {
 }
 
 /**
- * Editor: in aufklappbare Abschnitte (ha-expansion-panel) gegliedert -
- * Sensoren / Darstellung / Kategorien / Farben - wie bei den anderen
- * Integrationen. Innerhalb jedes Abschnitts ein ha-form-Block, bei Farben
- * eine handgebaute Sektion mit Swatch + Texteingabe + "Alle zurücksetzen".
+ * Editor (seit 0.0.2 nach dem Vorbild von FRITZ!Box Anrufe): kein eigener
+ * Shadow-DOM, sondern direkt im Light-DOM des Editor-Elements, mit nativen
+ * <details>-Abschnitten - Darstellung / Kategorien / Farben / Widgets
+ * (Widgets zuletzt). Die Farben-Sektion hat je Kategorie ein grafisches
+ * <input type="color">-Swatch plus ein Textfeld für beliebige CSS-Werte und
+ * zeigt den aktuell wirksamen Wert an. Die Konfiguration wird immer
+ * unveränderlich (neues Objekt) aktualisiert und per config-changed-Event mit
+ * bubbles+composed gemeldet.
  */
+const COLOR_EDITOR_FIELDS = [
+  { key: "color_notification", label: "Benachrichtigungen", fallbackHex: "#0288d1" },
+  { key: "color_update", label: "Updates", fallbackHex: "#fb8c00" },
+  { key: "color_repair", label: "Reparaturen", fallbackHex: "#e53935" },
+];
+
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/;
+
+// <input type="color"> akzeptiert nur #rrggbb - 3-stellige Kurzform aufweiten.
+function normalizeHex(hex) {
+  const h = String(hex || "").replace("#", "");
+  if (h.length === 3) return "#" + h.split("").map((c) => c + c).join("");
+  return "#" + h;
+}
+
+const SAFE_COLOR_RE = /^[a-zA-Z0-9#(),.%\-\s]+$/;
+
+const EDITOR_STYLES = `
+  .nc-editor { display: flex; flex-direction: column; gap: 8px; }
+  .nc-section {
+    border: 1px solid var(--divider-color, #e0e0e0);
+    border-radius: 8px;
+    padding: 0 12px;
+  }
+  .nc-section summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 0;
+    cursor: pointer;
+    font-weight: 500;
+    list-style: none;
+  }
+  .nc-section summary::-webkit-details-marker { display: none; }
+  .nc-section summary ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color, #727272); }
+  .nc-section summary .nc-chevron { margin-left: auto; transition: transform 0.2s; }
+  .nc-section[open] summary .nc-chevron { transform: rotate(180deg); }
+  .nc-body { padding: 4px 0 12px; display: flex; flex-direction: column; gap: 12px; }
+  .nc-reset-row { display: flex; justify-content: flex-end; }
+  .nc-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--divider-color, #e0e0e0);
+    border-radius: 6px;
+    padding: 6px 10px;
+    background: none;
+    color: var(--primary-text-color, #212121);
+    font: inherit;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+  .nc-btn:hover { background: var(--secondary-background-color, rgba(0, 0, 0, 0.04)); }
+  .nc-btn.primary {
+    background: var(--primary-color, #03a9f4);
+    color: var(--text-primary-color, #fff);
+    border-color: var(--primary-color, #03a9f4);
+  }
+  .nc-btn ha-icon { --mdc-icon-size: 16px; }
+  .nc-color-row { display: flex; flex-direction: column; gap: 4px; }
+  .nc-color-label { font-size: 0.9em; color: var(--primary-text-color, #212121); }
+  .nc-color-controls { display: flex; align-items: center; gap: 8px; }
+  .nc-color-controls input[type="color"] {
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--divider-color, #e0e0e0);
+    border-radius: 6px;
+    cursor: pointer;
+    background: none;
+  }
+  .nc-color-controls input[type="text"] {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--divider-color, #e0e0e0);
+    border-radius: 6px;
+    font: inherit;
+    color: var(--primary-text-color, #212121);
+    background: var(--card-background-color, #fff);
+    box-sizing: border-box;
+  }
+  .nc-color-helper { font-size: 0.75em; color: var(--secondary-text-color, #727272); }
+  .nc-hint { margin: 0; font-size: 0.85rem; color: var(--secondary-text-color, #727272); }
+  .nc-widget-block { display: flex; flex-direction: column; gap: 6px; }
+  .nc-widget-title { font-size: 0.9em; font-weight: 500; }
+  .nc-snippet {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--secondary-background-color, rgba(0, 0, 0, 0.04));
+    font-family: var(--code-font-family, monospace);
+    font-size: 0.82rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--primary-text-color, #212121);
+    -webkit-user-select: all;
+    user-select: all;
+  }
+  .nc-copy-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .nc-copy-status { font-size: 0.8em; color: var(--secondary-text-color, #727272); }
+  .nc-copy-status.ok { color: var(--success-color, #43a047); }
+  .nc-copy-status.fail { color: var(--error-color, #e53935); }
+`;
+
+const WIDGET_SENSORS = [
+  { key: "notifications", label: "Benachrichtigungen", noun: "Benachrichtigung(en)" },
+  { key: "updates", label: "Updates", noun: "Update(s)" },
+  { key: "repairs", label: "Reparaturen", noun: "Reparatur(en)" },
+];
+
 class NotificationCenterCardEditor extends HTMLElement {
   constructor() {
     super();
     this._built = false;
     this._forms = [];
+    this._config = {};
   }
 
   setConfig(config) {
-    this._config = config;
+    this._config = { ...config };
     if (!this._built) {
       this._buildEditor();
       this._built = true;
@@ -752,305 +916,293 @@ class NotificationCenterCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._forms) {
-      this._forms.forEach((form) => (form.hass = hass));
-    }
+    this._forms.forEach((form) => (form.hass = hass));
   }
 
   _section(title, icon, expanded) {
-    const panel = document.createElement("ha-expansion-panel");
-    panel.setAttribute("outlined", "");
-    if (expanded) panel.setAttribute("expanded", "");
-    panel.innerHTML = `
-      <div slot="header" class="section-header">
-        <ha-icon icon="${icon}"></ha-icon>
-        <span>${title}</span>
-      </div>
-    `;
-    return panel;
+    const details = document.createElement("details");
+    details.className = "nc-section";
+    if (expanded) details.open = true;
+    const summary = document.createElement("summary");
+    summary.innerHTML = `<ha-icon icon="${icon}"></ha-icon><span>${title}</span><ha-icon class="nc-chevron" icon="mdi:chevron-down"></ha-icon>`;
+    details.appendChild(summary);
+    const body = document.createElement("div");
+    body.className = "nc-body";
+    details.appendChild(body);
+    return { details, body };
+  }
+
+  _makeForm(schema) {
+    const form = document.createElement("ha-form");
+    form.schema = schema;
+    form.computeLabel = (item) => this._labelFor(item.name);
+    if (this._hass) form.hass = this._hass;
+    form.addEventListener("value-changed", (ev) => {
+      ev.stopPropagation();
+      this._config = this._unflatten(ev.detail.value, this._config);
+      this._emit();
+    });
+    this._forms.push(form);
+    return form;
   }
 
   _buildEditor() {
-    this.attachShadow({ mode: "open" });
-    this.shadowRoot.innerHTML = `
-      <style>
-        .editor-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
-        ha-expansion-panel { border-radius: 8px; }
-        .section-header {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          font-weight: 500;
-        }
-        .section-header ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
-        .section-body { padding: 8px 12px 12px; }
-        .color-row {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 6px 0;
-        }
-        .color-row label { flex: 1; color: var(--primary-text-color); font-size: 0.9rem; }
-        .color-row input[type="color"] {
-          width: 32px;
-          height: 32px;
-          border: none;
-          border-radius: 6px;
-          padding: 0;
-          background: none;
-          cursor: pointer;
-        }
-        .color-row input[type="text"] {
-          width: 140px;
-          padding: 6px 8px;
-          border-radius: 6px;
-          border: 1px solid var(--divider-color, #e0e0e0);
-          font: inherit;
-          background: var(--card-background-color, white);
-          color: var(--primary-text-color);
-        }
-        .reset-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          margin-top: 8px;
-          border: none;
-          background: none;
-          color: var(--primary-color);
-          cursor: pointer;
-          font: inherit;
-          padding: 4px 0;
-        }
-        .reset-btn ha-icon { --mdc-icon-size: 18px; }
-        .widget-hint {
-          margin-top: 12px;
-          padding-top: 12px;
-          border-top: 1px solid var(--divider-color, #e0e0e0);
-        }
-        .widget-hint p {
-          margin: 0 0 8px;
-          font-size: 0.85rem;
-          color: var(--secondary-text-color);
-        }
-        .widget-snippet {
-          margin: 0 0 8px;
-          padding: 8px 10px;
-          border-radius: 6px;
-          background: var(--secondary-background-color, rgba(0,0,0,0.04));
-          font-family: var(--code-font-family, monospace);
-          font-size: 0.82rem;
-          white-space: pre-wrap;
-          word-break: break-word;
-          color: var(--primary-text-color);
-        }
-        .copy-btn {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          border: none;
-          background: var(--primary-color);
-          color: var(--text-primary-color, white);
-          border-radius: 8px;
-          padding: 6px 12px;
-          cursor: pointer;
-          font: inherit;
-          font-size: 0.85rem;
-        }
-        .copy-btn ha-icon { --mdc-icon-size: 16px; }
-      </style>
-      <div class="editor-list" id="list"></div>
-    `;
-    const list = this.shadowRoot.getElementById("list");
+    const style = document.createElement("style");
+    style.textContent = EDITOR_STYLES;
+    this.appendChild(style);
+
+    const list = document.createElement("div");
+    list.className = "nc-editor";
+    this.appendChild(list);
     this._forms = [];
 
-    // --- Widgets (Sensor-Zuordnung + Android-Template-Widget) ---
-    const widgetsPanel = this._section("Widgets", "mdi:widgets-outline", true);
-    const widgetsBody = document.createElement("div");
-    widgetsBody.className = "section-body";
-    const sensorsForm = document.createElement("ha-form");
-    sensorsForm.schema = [
-      { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
-      { name: "entity_updates", selector: { entity: { domain: "sensor" } } },
-      { name: "entity_repairs", selector: { entity: { domain: "sensor" } } },
-    ];
-    sensorsForm.computeLabel = (schema) => this._labelFor(schema.name);
-    sensorsForm.addEventListener("value-changed", (ev) => {
-      this._config = this._unflatten(ev.detail.value, this._config);
-      this._emit();
-    });
-    widgetsBody.appendChild(sensorsForm);
-
-    const widgetHint = document.createElement("div");
-    widgetHint.className = "widget-hint";
-    widgetHint.innerHTML = `
-      <p>Zum Einfügen in ein Android-Template-Widget der Home-Assistant-App:</p>
-      <pre class="widget-snippet" data-widget-snippet></pre>
-      <button class="copy-btn" data-copy-widget>
-        <ha-icon icon="mdi:content-copy"></ha-icon>
-        <span>Quelltext kopieren</span>
-      </button>
-    `;
-    widgetsBody.appendChild(widgetHint);
-    this._widgetSnippetEl = widgetHint.querySelector("[data-widget-snippet]");
-    const copyBtn = widgetHint.querySelector("[data-copy-widget]");
-    copyBtn.addEventListener("click", async () => {
-      const text = this._widgetSnippetText();
-      try {
-        await navigator.clipboard.writeText(text);
-      } catch (err) {
-        const textarea = document.createElement("textarea");
-        textarea.value = text;
-        textarea.style.position = "fixed";
-        textarea.style.opacity = "0";
-        document.body.appendChild(textarea);
-        textarea.select();
-        try {
-          document.execCommand("copy");
-        } catch (copyErr) {
-          /* Zwischenablage nicht verfügbar - ignorieren */
-        }
-        document.body.removeChild(textarea);
-      }
-      const label = copyBtn.querySelector("span");
-      const original = label.textContent;
-      label.textContent = "Kopiert!";
-      setTimeout(() => {
-        label.textContent = original;
-      }, 1500);
-    });
-
-    widgetsPanel.appendChild(widgetsBody);
-    list.appendChild(widgetsPanel);
-    this._forms.push(sensorsForm);
-
     // --- Darstellung ---
-    const displayPanel = this._section("Darstellung", "mdi:view-dashboard-outline", false);
-    const displayBody = document.createElement("div");
-    displayBody.className = "section-body";
-    const displayForm = document.createElement("ha-form");
-    displayForm.schema = [
-      { name: "title", selector: { text: {} } },
-      { name: "show_title", selector: { boolean: {} } },
-      { name: "icon", selector: { icon: {} } },
-      { name: "show_search", selector: { boolean: {} } },
-    ];
-    displayForm.computeLabel = (schema) => this._labelFor(schema.name);
-    displayForm.addEventListener("value-changed", (ev) => {
-      this._config = this._unflatten(ev.detail.value, this._config);
-      this._emit();
-    });
-    displayBody.appendChild(displayForm);
-    displayPanel.appendChild(displayBody);
-    list.appendChild(displayPanel);
-    this._forms.push(displayForm);
+    const display = this._section("Darstellung", "mdi:view-dashboard-outline", true);
+    display.body.appendChild(
+      this._makeForm([
+        { name: "title", selector: { text: {} } },
+        { name: "show_title", selector: { boolean: {} } },
+        { name: "icon", selector: { icon: {} } },
+        { name: "show_search", selector: { boolean: {} } },
+      ])
+    );
+    list.appendChild(display.details);
 
     // --- Kategorien ---
-    const categoriesPanel = this._section("Kategorien", "mdi:eye-outline", false);
-    const categoriesBody = document.createElement("div");
-    categoriesBody.className = "section-body";
-    const categoriesForm = document.createElement("ha-form");
-    categoriesForm.schema = [
-      { name: "show_notifications", selector: { boolean: {} } },
-      { name: "show_updates", selector: { boolean: {} } },
-      { name: "show_repairs", selector: { boolean: {} } },
-    ];
-    categoriesForm.computeLabel = (schema) => this._labelFor(schema.name);
-    categoriesForm.addEventListener("value-changed", (ev) => {
-      this._config = this._unflatten(ev.detail.value, this._config);
-      this._emit();
-    });
-    categoriesBody.appendChild(categoriesForm);
-    categoriesPanel.appendChild(categoriesBody);
-    list.appendChild(categoriesPanel);
-    this._forms.push(categoriesForm);
+    const categories = this._section("Kategorien", "mdi:eye-outline", false);
+    categories.body.appendChild(
+      this._makeForm([
+        { name: "show_notifications", selector: { boolean: {} } },
+        { name: "show_updates", selector: { boolean: {} } },
+        { name: "show_repairs", selector: { boolean: {} } },
+      ])
+    );
+    list.appendChild(categories.details);
 
     // --- Farben ---
-    const colorsPanel = this._section("Farben", "mdi:palette-outline", false);
-    const colorsBody = document.createElement("div");
-    colorsBody.className = "section-body";
-    colorsBody.innerHTML = `
-      <div class="color-row" data-key="color_notification">
-        <label>Benachrichtigungen</label>
-        <input type="color" />
-        <input type="text" placeholder="Hex, rgb(), hsl(), var(--…)" />
-      </div>
-      <div class="color-row" data-key="color_update">
-        <label>Updates</label>
-        <input type="color" />
-        <input type="text" placeholder="Hex, rgb(), hsl(), var(--…)" />
-      </div>
-      <div class="color-row" data-key="color_repair">
-        <label>Reparaturen</label>
-        <input type="color" />
-        <input type="text" placeholder="Hex, rgb(), hsl(), var(--…)" />
-      </div>
-      <button class="reset-btn"><ha-icon icon="mdi:restore"></ha-icon><span>Alle Farben zurücksetzen</span></button>
-    `;
-    colorsPanel.appendChild(colorsBody);
-    list.appendChild(colorsPanel);
+    const colors = this._section("Farben", "mdi:palette-outline", false);
+    this._buildColorSection(colors.body);
+    list.appendChild(colors.details);
+
+    // --- Widgets (bewusst als letzter Abschnitt) ---
+    const widgets = this._section("Widgets", "mdi:widgets-outline", false);
+    this._buildWidgetSection(widgets.body);
+    list.appendChild(widgets.details);
+  }
+
+  _buildColorSection(body) {
+    const resetRow = document.createElement("div");
+    resetRow.className = "nc-reset-row";
+    resetRow.innerHTML = `<button type="button" class="nc-btn"><ha-icon icon="mdi:restore"></ha-icon><span>Alle Farben zurücksetzen</span></button>`;
+    resetRow.querySelector("button").addEventListener("click", () => this._resetAllColors());
+    body.appendChild(resetRow);
 
     this._colorInputs = {};
-    colorsBody.querySelectorAll(".color-row").forEach((row) => {
-      const key = row.getAttribute("data-key");
+    this._focusedColorKey = null;
+
+    COLOR_EDITOR_FIELDS.forEach((field) => {
+      const row = document.createElement("div");
+      row.className = "nc-color-row";
+      row.innerHTML = `
+        <div class="nc-color-label">${escapeHtml(field.label)}</div>
+        <div class="nc-color-controls">
+          <input type="color" aria-label="${escapeHtml(field.label)} (grafische Auswahl)" />
+          <input type="text" placeholder="${escapeHtml(field.fallbackHex)}" />
+        </div>
+        <div class="nc-color-helper"></div>`;
       const swatch = row.querySelector('input[type="color"]');
       const text = row.querySelector('input[type="text"]');
-      this._colorInputs[key] = { swatch, text };
-
       stopKeyPropagation(text);
+
+      // Swatch liefert immer ein gültiges #rrggbb.
       swatch.addEventListener("input", () => {
         text.value = swatch.value;
-        this._config[key] = swatch.value;
-        this._emit();
+        this._onColorChange(field.key, swatch.value);
       });
-      text.addEventListener("input", () => {
-        this._config[key] = text.value;
-        if (HEX_RE.test(text.value)) swatch.value = text.value;
-        this._emit();
+      swatch.addEventListener("change", () => {
+        text.value = swatch.value;
+        this._onColorChange(field.key, swatch.value);
       });
-    });
+      // Textfeld: erst bei "change" (Verlassen/Enter), nicht pro Tastendruck.
+      text.addEventListener("change", () => this._onColorChange(field.key, text.value));
+      text.addEventListener("focus", () => (this._focusedColorKey = field.key));
+      text.addEventListener("blur", () => {
+        if (this._focusedColorKey === field.key) this._focusedColorKey = null;
+      });
 
-    colorsBody.querySelector(".reset-btn").addEventListener("click", () => {
-      ["color_notification", "color_update", "color_repair"].forEach((key) => {
-        this._config[key] = "";
-        this._colorInputs[key].text.value = "";
-        this._colorInputs[key].swatch.value = "#000000";
-      });
-      this._emit();
+      body.appendChild(row);
+      this._colorInputs[field.key] = { row, swatch, text };
     });
   }
 
-  _widgetSnippetText() {
+  _onColorChange(key, rawValue) {
+    const value = String(rawValue || "").trim();
+    if (value && !SAFE_COLOR_RE.test(value)) return;
+    this._config = { ...this._config, [key]: value };
+    this._updateColorSection();
+    this._emit();
+  }
+
+  _resetAllColors() {
+    const cleared = {};
+    COLOR_EDITOR_FIELDS.forEach((field) => (cleared[field.key] = ""));
+    this._config = { ...this._config, ...cleared };
+    this._focusedColorKey = null;
+    this._updateColorSection();
+    this._emit();
+  }
+
+  _updateColorSection() {
+    if (!this._colorInputs) return;
+    COLOR_EDITOR_FIELDS.forEach((field) => {
+      const inputs = this._colorInputs[field.key];
+      if (!inputs) return;
+      const raw = String(this._config[field.key] || "").trim();
+      inputs.swatch.value = HEX_COLOR_RE.test(raw) ? normalizeHex(raw) : field.fallbackHex;
+      if (this._focusedColorKey !== field.key) inputs.text.value = raw;
+      inputs.row.querySelector(".nc-color-helper").textContent = raw
+        ? `Aktuell verwendet: ${raw}`
+        : `Aktuell verwendet (Standard): ${field.fallbackHex}`;
+    });
+  }
+
+  _buildWidgetSection(body) {
+    body.appendChild(
+      this._makeForm([
+        { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
+        { name: "entity_updates", selector: { entity: { domain: "sensor" } } },
+        { name: "entity_repairs", selector: { entity: { domain: "sensor" } } },
+      ])
+    );
+
+    const hint = document.createElement("p");
+    hint.className = "nc-hint";
+    hint.textContent =
+      "Für ein Android-Template-Widget der Home-Assistant-App: pro Sensor einzeln oder alle drei zusammen kopieren.";
+    body.appendChild(hint);
+
+    this._widgetBlocks = {};
+    [...WIDGET_SENSORS, { key: "all", label: "Alle drei zusammen" }].forEach((def) => {
+      const block = document.createElement("div");
+      block.className = "nc-widget-block";
+      block.innerHTML = `
+        <div class="nc-widget-title">${escapeHtml(def.label)}</div>
+        <pre class="nc-snippet"></pre>
+        <div class="nc-copy-row">
+          <button type="button" class="nc-btn primary"><ha-icon icon="mdi:content-copy"></ha-icon><span>Quelltext kopieren</span></button>
+          <span class="nc-copy-status"></span>
+        </div>`;
+      const pre = block.querySelector("pre");
+      const status = block.querySelector(".nc-copy-status");
+      block.querySelector("button").addEventListener("click", async () => {
+        const text = this._widgetSnippetText(def.key);
+        if (!text) {
+          this._setCopyStatus(status, "Bitte zuerst den Sensor zuweisen.", "fail");
+          return;
+        }
+        const ok = await this._copyText(text);
+        if (ok) {
+          this._setCopyStatus(status, "In die Zwischenablage kopiert", "ok");
+        } else {
+          // Letzter Ausweg: Text markieren, damit der Nutzer ihn von Hand
+          // (lange drücken -> Kopieren) übernehmen kann.
+          this._selectNode(pre);
+          this._setCopyStatus(status, "Automatisch nicht möglich - Text ist markiert, bitte manuell kopieren", "fail");
+        }
+      });
+      body.appendChild(block);
+      this._widgetBlocks[def.key] = { pre, status };
+    });
+  }
+
+  _setCopyStatus(el, message, kind) {
+    el.textContent = message;
+    el.className = `nc-copy-status ${kind}`;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => {
+      el.textContent = "";
+      el.className = "nc-copy-status";
+    }, 4000);
+  }
+
+  _selectNode(node) {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (err) {
+      /* Markieren nicht möglich - ignorieren */
+    }
+  }
+
+  // Kopiert Text in die Zwischenablage. Die moderne Clipboard-API gibt es nur
+  // in sicheren Kontexten (HTTPS) - in der Companion-App über http:// fehlt
+  // sie, dann greift der execCommand-Weg. Das Hilfs-Textfeld wird bewusst im
+  // Editor selbst (innerhalb des Dialogs) eingehängt: Ein Feld in document.body
+  // scheitert im modalen HA-Dialog am Fokus-Trap.
+  async _copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (err) {
+        /* weiter mit Fallback */
+      }
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.setAttribute("readonly", "");
+    textarea.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;";
+    this.appendChild(textarea);
+    let ok = false;
+    try {
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+      ok = document.execCommand("copy");
+    } catch (err) {
+      ok = false;
+    }
+    this.removeChild(textarea);
+    return ok;
+  }
+
+  _widgetSnippetText(which) {
     const entities = (this._config && this._config.entities) || {};
-    const lines = [];
-    if (entities.notifications) lines.push(`{{ states('${entities.notifications}') }} Benachrichtigung(en)`);
-    if (entities.updates) lines.push(`{{ states('${entities.updates}') }} Update(s)`);
-    if (entities.repairs) lines.push(`{{ states('${entities.repairs}') }} Reparatur(en)`);
-    if (!lines.length) return "Bitte zuerst oben die Sensoren zuweisen.";
-    return lines.join("\n");
+    const lineFor = (def) =>
+      entities[def.key] ? `{{ states('${entities[def.key]}') }} ${def.noun}` : null;
+    if (which === "all") {
+      const lines = WIDGET_SENSORS.map(lineFor).filter(Boolean);
+      return lines.join("\n");
+    }
+    const def = WIDGET_SENSORS.find((d) => d.key === which);
+    const entityId = def && entities[def.key];
+    if (!entityId) return "";
+    return `{{ states('${entityId}') }} ${def.noun}\n{{ state_attr('${entityId}', 'summary') }}`;
   }
 
   _syncFromConfig() {
     const flat = this._flatten(this._config);
     this._forms.forEach((form) => (form.data = flat));
-    ["color_notification", "color_update", "color_repair"].forEach((key) => {
-      const pair = this._colorInputs[key];
-      // Während der Nutzer im Textfeld tippt, nicht überschreiben: setConfig()
-      // läuft nach jedem Tastendruck erneut (via config-changed -> Editor-Host
-      // -> setConfig), und ein Reset mitten im Tippen hätte das Feld immer
-      // wieder auf den zuletzt bestätigten Wert zurückgesetzt.
-      if (this.shadowRoot.activeElement === pair.text) return;
-      const value = this._config[key] || "";
-      pair.text.value = value;
-      pair.swatch.value = HEX_RE.test(value) ? value : "#000000";
-    });
-    if (this._widgetSnippetEl) {
-      this._widgetSnippetEl.textContent = this._widgetSnippetText();
+    this._updateColorSection();
+    if (this._widgetBlocks) {
+      Object.entries(this._widgetBlocks).forEach(([key, block]) => {
+        block.pre.textContent =
+          this._widgetSnippetText(key) || "Bitte zuerst den Sensor zuweisen.";
+      });
     }
   }
 
   _emit() {
-    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config: this._config } }));
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: this._config },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   _labelFor(name) {

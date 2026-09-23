@@ -107,8 +107,8 @@ dem aktiven Theme.
 ### Editor in Abschnitten
 
 Der grafische Editor ist in aufklappbare Abschnitte gegliedert - Widgets,
-Darstellung, Kategorien, Farben - ebenfalls wie bei den anderen
-Integrationen.
+Darstellung, Kategorien, Farben, Widgets (zuletzt) - ebenfalls wie bei den
+anderen Integrationen.
 
 ## Android-Widget
 
@@ -116,7 +116,8 @@ Die Sensoren sind bewusst so aufgebaut, dass sie sich direkt in ein
 **Template-Widget** der Home-Assistant-Companion-App einsetzen lassen, ohne
 zusätzliche Helper oder Automationen. Im Editor-Abschnitt *Widgets* steht
 dafür bereits der fertige, auf die zugewiesenen Sensoren zugeschnittene
-Quelltext mit einem *Quelltext kopieren*-Button - besonders praktisch am
+Quelltext - je Sensor einzeln sowie für alle drei zusammen, jeweils mit einem
+*Quelltext kopieren*-Button - besonders praktisch am
 Smartphone, um ihn direkt im Widget-Bereich der Android-App wieder
 einzufügen:
 
@@ -138,6 +139,24 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.2 – Farbwähler, Suche, Kopieren je Sensor, Widgets zuletzt
+
+- **Bugfix Farbauswahl:** Editor nach dem Vorbild von FRITZ!Box Anrufe neu
+  aufgebaut (Light-DOM statt Shadow-DOM, native Abschnitte, unveränderliche
+  Konfiguration, `config-changed` mit `bubbles`/`composed`). Swatch und Textfeld
+  zeigen den aktuell wirksamen Wert an.
+- **Bugfix Suche:** Die Suche baut nicht mehr die ganze Karte neu auf, sondern
+  nur die Liste - das Suchfeld behält Fokus und Tastatur, auch bei
+  Home-Assistant-Updates während des Tippens.
+- **Bugfix Kopieren:** Fallback für die Companion-App (unsicherer Kontext ohne
+  Clipboard-API) - das Hilfsfeld liegt jetzt im Editor-Dialog statt in
+  `document.body`. Rückmeldung „kopiert" / „nicht möglich", bei Fehlschlag wird
+  der Text zum manuellen Kopieren markiert.
+- Quelltext kopieren jetzt **je Sensor einzeln** (Anzahl + `summary`) plus
+  „Alle drei zusammen"
+- Editor-Reihenfolge: Darstellung, Kategorien, Farben, **Widgets als letzter
+  Abschnitt**
 
 ### 0.0.1b4 – Such-/Farbfeld-Fix, Widgets-Abschnitt, Icon leerbar, README-Icon
 

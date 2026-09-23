@@ -135,6 +135,15 @@ Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten
 
 ## Versionshistorie
 
+### 0.0.1b3 – Bugfix: Editor-Absturz "Cannot read properties of undefined"
+
+- Home Assistant setzt beim Öffnen des Karten-Editors `hass` und ruft
+  `setConfig()` in keiner garantierten Reihenfolge auf. Traf `hass` zuerst
+  ein, existierte `this._forms` noch nicht, und der Editor stürzte mit
+  „Cannot read properties of undefined (reading 'forEach')" ab. `_forms`
+  wird jetzt im Konstruktor angelegt, zusätzlich zur Absicherung im
+  `hass`-Setter.
+
 ### 0.0.1b2 – Tabs zurück, Editor als Akkordeon, Löschen, Such-Fix
 
 - Kategorien wieder als **Tabs nebeneinander** (die Akkordeon-Darstellung aus

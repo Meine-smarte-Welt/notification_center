@@ -706,6 +706,12 @@ class NotificationCenterCard extends HTMLElement {
  * eine handgebaute Sektion mit Swatch + Texteingabe + "Alle zurücksetzen".
  */
 class NotificationCenterCardEditor extends HTMLElement {
+  constructor() {
+    super();
+    this._built = false;
+    this._forms = [];
+  }
+
   setConfig(config) {
     this._config = config;
     if (!this._built) {
@@ -717,7 +723,9 @@ class NotificationCenterCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    this._forms.forEach((form) => (form.hass = hass));
+    if (this._forms) {
+      this._forms.forEach((form) => (form.hass = hass));
+    }
   }
 
   _section(title, icon, expanded) {

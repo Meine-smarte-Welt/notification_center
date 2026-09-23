@@ -121,32 +121,34 @@ Quelltext - je Sensor einzeln sowie für alle drei zusammen, jeweils mit einem
 Smartphone, um ihn direkt im Widget-Bereich der Android-App wieder
 einzufügen:
 
-Die Quelltexte sind für Android-Widgets optimiert (die verstehen kein CSS, nur
-einfaches HTML): farbige Zahl in der Kategorie-Farbe aus dem Abschnitt *Farben*
-(nur Hex-Werte, sonst Standardfarbe), korrekte Einzahl/Mehrzahl, darunter der
-Kurztext des ersten Eintrags. Bei 0 Einträgen erscheint ein grünes
-„✓ Alles erledigt". Beispiel für Updates:
+Die Quelltexte sind an eine Mail-Übersicht angelehnt: eine Kopfzeile
+„Kategorie (Anzahl)“ in der Kategorie-Farbe aus dem Abschnitt *Farben* (nur
+Hex-Werte, sonst Standardfarbe), darunter die ersten drei Einträge mit
+fettem Titel und kleiner, grauer Nachricht sowie „+ n weitere“. Bei 0
+Einträgen erscheint ein grünes „✓ Alles erledigt“. *Alle drei zusammen* zeigt
+je Kategorie die Kopfzeile mit den ersten zwei Titeln; Kategorien ohne
+Einträge sind grau.
 
-```
-{%- set n = states('sensor.notification_center_updates') | int(0) -%}
-{% if n == 0 -%}
-<b><font color="#43a047">✓ Keine Updates</font></b><br>
-<small>Alles erledigt</small>
-{%- else -%}
-<b><font color="#fb8c00">{{ n }}</font> {{ 'Update' if n == 1 else 'Updates' }}</b><br>
-<small>{{ state_attr('sensor.notification_center_updates', 'summary') }}</small>
-{%- endif %}
-```
-
-Zusätzlich gibt es *Alle drei zusammen* (drei Zeilen, Kategorien ohne Einträge
-grau). Hintergrund-, Textfarbe und Schriftgröße stellst du in der
-Companion-App beim Widget selbst ein.
+**Grenzen des Template-Widgets:** Die Companion-App rendert hier nur einfaches
+HTML (`<b>`, `<big>`, `<small>`, `<font color>`, `<br>`). Karten mit
+abgerundeten Zeilen, Icons und Buttons wie beim Gmail-Widget sind damit nicht
+möglich. Hintergrundfarbe, Textfarbe, Schriftgröße und Ausrichtung stellt die
+App beim Widget selbst ein. Pro Widget immer nur **einen** Quelltext einfügen.
 
 Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 (Android-Einstellungen → Benachrichtigungen → Benachrichtigungszugriff →
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.5 – Widgets im Stil einer Mail-Übersicht
+
+- Widget-Quelltexte neu: Kopfzeile „Kategorie (Anzahl)“, darunter die ersten
+  drei Einträge (Titel fett, Nachricht klein/grau), „+ n weitere“, grünes
+  „✓ Alles erledigt“ bei 0 Einträgen
+- *Alle drei zusammen*: je Kategorie Kopfzeile plus die ersten zwei Titel
+- Texte werden maskiert (`| e`) und gekürzt, damit Sonderzeichen wie `&` oder
+  `<` das Widget nicht stören
 
 ### 0.0.4 – Karte erscheint unter „Ressourcen"
 

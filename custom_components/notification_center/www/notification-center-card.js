@@ -1212,52 +1212,80 @@ class NotificationCenterCardEditor extends HTMLElement {
     return HEX_COLOR_RE.test(raw) ? normalizeHex(raw).toLowerCase() : def.fallbackHex;
   }
 
-  // Erzeugt den Template-Quelltext für das Android-Widget: farbige Zahl,
-  // korrekte Einzahl/Mehrzahl, "Alles erledigt" in Grün bei 0 Einträgen.
-  // Ausgabe bewusst mit <br> statt Zeilenumbrüchen (Android-Widgets fassen
-  // Umbrüche sonst zu einer Zeile zusammen) und mit {%- -%}, damit keine
-  // Leerzeilen entstehen.
+  // Erzeugt den Template-Quelltext für das Android-Widget im Stil einer
+  // Mail-Übersicht: Kopfzeile "Kategorie (Anzahl)" in der Kategorie-Farbe,
+  // darunter die ersten Einträge - Titel fett, Nachricht klein und grau -
+  // sowie "+ n weitere". Bei 0 Einträgen ein grünes "✓ Alles erledigt".
+  // Android-Template-Widgets verstehen nur einfaches HTML (<b>, <big>,
+  // <small>, <font color>, <br>), keine Karten, Icons oder Buttons. Die
+  // Ausgabe nutzt <br> statt Zeilenumbrüchen und {%- -%}, damit keine
+  // Leerzeilen entstehen; Texte werden mit | e maskiert.
+  _widgetBlock(def, entityId, maxItems, withHeaderSize) {
+    const color = this._widgetColor(def);
+    const head = withHeaderSize
+      ? `<big><b><font color="${color}">${def.label}</font> ({{ n }})</b></big>`
+      : `<b><font color="${color}">${def.label}</font> ({{ n }})</b>`;
+    return [
+      `{%- set n = states('${entityId}') | int(0) -%}`,
+      `{%- set items = state_attr('${entityId}', 'items') or [] -%}`,
+      `${head}<br>`,
+      `{%- if n == 0 -%}`,
+      `<font color="${WIDGET_OK_HEX}">✓ Alles erledigt</font>`,
+      `{%- else -%}`,
+      `{%- for i in items[:${maxItems}] -%}`,
+      `<b>{{ i.title | e }}</b><br>`,
+      `{%- if i.message -%}<small><font color="${WIDGET_MUTED_HEX}">{{ i.message | truncate(70) | e }}</font></small><br>{%- endif -%}`,
+      `{%- if not loop.last -%}<br>{%- endif -%}`,
+      `{%- endfor -%}`,
+      `{%- if n > ${maxItems} -%}<br><small><font color="${WIDGET_MUTED_HEX}">+ {{ n - ${maxItems} }} weitere</font></small>{%- endif -%}`,
+      `{%- endif -%}`,
+    ].join("\n");
+  }
+
   _widgetSnippetText(which) {
     const entities = (this._config && this._config.entities) || {};
 
     if (which === "all") {
       const defs = WIDGET_SENSORS.filter((d) => entities[d.key]);
       if (!defs.length) return "";
+      // Alle Kategorien untereinander: je Kategorie eine Kopfzeile mit den
+      // ersten zwei Einträgen. {% macro %} vermeidet dreifach kopierten Code.
+      const macro = [
+        `{%- macro block(label, color, n, items) -%}`,
+        `<b><font color="{{ color if n else '${WIDGET_MUTED_HEX}' }}">{{ label }}</font> ({{ n }})</b><br>`,
+        `{%- for i in items[:2] -%}<small>{{ i.title | e }}</small><br>{%- endfor -%}`,
+        `{%- endmacro -%}`,
+      ].join("\n");
       const sets = defs
-        .map((d, i) => `{%- set n${i} = states('${entities[d.key]}') | int(0) -%}`)
+        .map(
+          (d, i) =>
+            `{%- set n${i} = states('${entities[d.key]}') | int(0) -%}\n` +
+            `{%- set i${i} = state_attr('${entities[d.key]}', 'items') or [] -%}`
+        )
         .join("\n");
       const total = defs.map((_, i) => `n${i}`).join(" + ");
-      const lines = defs
-        .map((d, i) => {
-          const color = this._widgetColor(d);
-          return (
-            `<font color="{{ '${color}' if n${i} else '${WIDGET_MUTED_HEX}' }}"><b>{{ n${i} }}</b></font> ` +
-            `{{ '${d.singular}' if n${i} == 1 else '${d.plural}' }}`
-          );
-        })
-        .join("<br>\n");
-      return (
-        `${sets}\n` +
-        `{% if ${total} == 0 -%}\n` +
-        `<b><font color="${WIDGET_OK_HEX}">✓ Alles erledigt</font></b>\n` +
-        `{%- else -%}\n${lines}\n{%- endif %}`
-      );
+      const calls = defs
+        .map(
+          (d, i) =>
+            `{{ block('${d.label}', '${this._widgetColor(d)}', n${i}, i${i}) }}` +
+            (i < defs.length - 1 ? "<br>" : "")
+        )
+        .join("\n");
+      return [
+        macro,
+        sets,
+        `{%- if ${total} == 0 -%}`,
+        `<big><b><font color="${WIDGET_OK_HEX}">✓ Alles erledigt</font></b></big>`,
+        `{%- else -%}`,
+        calls,
+        `{%- endif -%}`,
+      ].join("\n");
     }
 
     const def = WIDGET_SENSORS.find((d) => d.key === which);
     const entityId = def && entities[def.key];
     if (!entityId) return "";
-    const color = this._widgetColor(def);
-    return (
-      `{%- set n = states('${entityId}') | int(0) -%}\n` +
-      `{% if n == 0 -%}\n` +
-      `<b><font color="${WIDGET_OK_HEX}">✓ ${def.none}</font></b><br>\n` +
-      `<small>Alles erledigt</small>\n` +
-      `{%- else -%}\n` +
-      `<b><font color="${color}">{{ n }}</font> {{ '${def.singular}' if n == 1 else '${def.plural}' }}</b><br>\n` +
-      `<small>{{ state_attr('${entityId}', 'summary') }}</small>\n` +
-      `{%- endif %}`
-    );
+    return this._widgetBlock(def, entityId, 3, true);
   }
 
   _syncFromConfig() {

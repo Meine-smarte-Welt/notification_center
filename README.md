@@ -1,4 +1,4 @@
-# Benachrichtigungszentrale
+# Notification Center
 
 <p align="center">
   <img src="custom_components/notification_center/brand/icon.png" width="96" alt="Notification Center Icon">
@@ -38,31 +38,32 @@ von Home Assistant kopieren und neu starten.
 ### Über HACS
 
 Als benutzerdefiniertes Repository (Kategorie *Integration*) hinzufügen und
-„Benachrichtigungszentrale" installieren.
+„Notification Center" installieren.
 
 ## Einrichtung
 
 Einstellungen → Geräte & Dienste → **Integration hinzufügen** →
-„Benachrichtigungszentrale". Es sind keine Zugangsdaten nötig, es kann nur
+„Notification Center". Es sind keine Zugangsdaten nötig, es kann nur
 eine Instanz eingerichtet werden.
 
 ## Dashboard-Karte
 
-Karte hinzufügen → **Benachrichtigungszentrale** → die drei Sensoren
+Karte hinzufügen → **Notification Center** → die drei Sensoren
 zuweisen. Beispiel-YAML:
 
 ```yaml
 type: custom:notification-center-card
-title: Benachrichtigungszentrale
+title: Notification Center
+show_title: true
 icon: mdi:bell-badge-outline
 show_search: true
 show_notifications: true
 show_updates: true
 show_repairs: true
 entities:
-  notifications: sensor.benachrichtigungszentrale_benachrichtigungen
-  updates: sensor.benachrichtigungszentrale_updates
-  repairs: sensor.benachrichtigungszentrale_reparaturen
+  notifications: sensor.notification_center_benachrichtigungen
+  updates: sensor.notification_center_updates
+  repairs: sensor.notification_center_reparaturen
 
 # Farben (leer = aktives Theme)
 color_notification: ""
@@ -70,12 +71,23 @@ color_update: ""
 color_repair: ""
 ```
 
+### Akkordeon statt Tabs
+
+Die drei Kategorien liegen als aufklappbare Abschnitte (`ha-expansion-panel`)
+übereinander statt als Tabs - Icon, Name und Zähler-Badge bleiben auch bei
+eingeklapptem Abschnitt sichtbar. Suchfeld und Filterchips gehören zum
+gerade aufgeklappten Abschnitt.
+
+### Titel ein-/ausblenden
+
+`show_title: false` blendet Kopfzeile (Titel + Icon) komplett aus, wenn nur
+die Kategorien selbst auf einem Dashboard stehen sollen.
+
 ### Kategorien ein-/ausblenden
 
 `show_notifications`, `show_updates` und `show_repairs` blenden die jeweilige
-Kategorie komplett aus - Tab, Zähler und Inhalt verschwinden. Ist keine
-Kategorie mehr aktiv, zeigt die Karte einen entsprechenden Hinweis statt
-leerer Tabs.
+Kategorie komplett aus - Abschnitt, Zähler und Inhalt verschwinden. Ist keine
+Kategorie mehr aktiv, zeigt die Karte einen entsprechenden Hinweis.
 
 ### Farben
 
@@ -92,16 +104,16 @@ Die Sensoren sind bewusst so aufgebaut, dass sie sich direkt in ein
 zusätzliche Helper oder Automationen:
 
 ```
-{{ state_attr('sensor.benachrichtigungszentrale_updates', 'summary') }}
+{{ state_attr('sensor.notification_center_updates', 'summary') }}
 ```
 
 Für alle drei Kategorien auf einen Blick, z. B. als mehrzeiliges
 Template-Widget:
 
 ```
-{{ states('sensor.benachrichtigungszentrale_benachrichtigungen') }} Benachrichtigung(en)
-{{ states('sensor.benachrichtigungszentrale_updates') }} Update(s)
-{{ states('sensor.benachrichtigungszentrale_reparaturen') }} Reparatur(en)
+{{ states('sensor.notification_center_benachrichtigungen') }} Benachrichtigung(en)
+{{ states('sensor.notification_center_updates') }} Update(s)
+{{ states('sensor.notification_center_reparaturen') }} Reparatur(en)
 ```
 
 Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
@@ -109,6 +121,32 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.1b1 – Icon nachgerüstet
+
+- Integrations-Icon lokal unter `custom_components/notification_center/brand/`
+  ergänzt (`icon.png` 256×256, `icon@2x.png` 512×512) - genutzt über die seit
+  Home Assistant 2026.3 unterstützten lokalen Brand-Images, ohne Pull
+  Request nach `home-assistant/brands`
+
+## Versionshistorie
+
+### 0.0.1b1 – Umbenennung, Akkordeon, Bugfix
+
+- Integration und Karte umbenannt in **Notification Center** (Domain bleibt
+  `notification_center`, entsprechend auch neue Entity-IDs)
+- **Bugfix Reparaturen-Sensor:** zählte bisher auch längst erledigte,
+  archivierte Issues mit (falsches Attribut geprüft). Home Assistant markiert
+  nicht-persistente Issues nach einem Neustart zunächst als inaktiv (`active:
+  False`) und aktiviert sie nur neu, wenn die verantwortliche Integration das
+  Problem in dieser Session erneut feststellt - genau dieses Feld wird jetzt
+  korrekt ausgewertet, daher stimmt die Anzahl jetzt mit Einstellungen →
+  System → Reparaturen überein
+- Kategorien jetzt als **Akkordeon** (`ha-expansion-panel`) statt Tabs,
+  Zähler-Badge bleibt auch eingeklappt sichtbar
+- Update-Popup zeigt jetzt zusätzlich zu „Update-Notizen öffnen" auch einen
+  **„Jetzt installieren"**-Button
+- Kopfzeile (Titel + Icon) über `show_title` ein-/ausblendbar
 
 ### 0.0.1b0 – Vorabversion (Pre-Release)
 

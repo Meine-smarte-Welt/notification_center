@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "Benachrichtigungszentrale einrichten",
+        "title": "Notification Center einrichten",
         "description": "Legt drei Sensoren an: Benachrichtigungen, Updates und Reparaturen. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden."
       }
     },

@@ -1,12 +1,10 @@
 /**
  * notification-center-card
  *
- * Drei Kategorien (Benachrichtigungen / Updates / Reparaturen) als Tabs,
- * mit Suche, Filterleiste, Detail-Popup, einzeln ein-/ausblendbaren
- * Kategorien und frei wählbaren Farben - im Look & Feel an die
- * Schwester-Karten "FRITZ!Box Anrufe" und "FRITZ!Box Netzwerk" angelehnt
- * (gleiches Icon-Set: mdi:close, mdi:check, mdi:chevron-down,
- * mdi:table-column, mdi:palette-outline, mdi:restore).
+ * Drei Kategorien (Benachrichtigungen / Updates / Reparaturen) als
+ * Accordion (ha-expansion-panel, wie in anderen Home-Assistant-UIs), mit
+ * Suche, Filterleiste, Detail-Popup, einzeln ein-/ausblendbaren Kategorien,
+ * ein-/ausblendbarem Titel und frei wählbaren Farben.
  *
  * Erwartete Sensoren (siehe custom_components/notification_center/sensor.py):
  *   state              -> Anzahl offener Einträge
@@ -14,7 +12,7 @@
  *   attributes.summary -> ein fertiger Kurztext (fürs Android-Widget)
  */
 
-const DEFAULT_TITLE = "Benachrichtigungszentrale";
+const DEFAULT_TITLE = "Notification Center";
 const DEFAULT_ICON = "mdi:bell-badge-outline";
 
 const CATEGORY_DEFS = [
@@ -102,14 +100,15 @@ class NotificationCenterCard extends HTMLElement {
       type: "custom:notification-center-card",
       title: DEFAULT_TITLE,
       icon: DEFAULT_ICON,
+      show_title: true,
       show_search: true,
       show_notifications: true,
       show_updates: true,
       show_repairs: true,
       entities: {
-        notifications: "sensor.benachrichtigungszentrale_benachrichtigungen",
-        updates: "sensor.benachrichtigungszentrale_updates",
-        repairs: "sensor.benachrichtigungszentrale_reparaturen",
+        notifications: "sensor.notification_center_benachrichtigungen",
+        updates: "sensor.notification_center_updates",
+        repairs: "sensor.notification_center_reparaturen",
       },
     };
   }
@@ -117,10 +116,12 @@ class NotificationCenterCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._activeTab = null;
+    this._expanded = null;
+    this._hasInteracted = false;
     this._search = "";
     this._activeFilter = { notifications: "all", updates: "all", repairs: "all" };
     this._detailItem = null;
+    this._detailCategory = null;
   }
 
   setConfig(config) {
@@ -137,7 +138,7 @@ class NotificationCenterCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 5;
+    return 6;
   }
 
   _visibleCategories() {
@@ -185,12 +186,19 @@ class NotificationCenterCard extends HTMLElement {
     if (!this._config || !this._hass || !this.shadowRoot) return;
 
     const visibleCategories = this._visibleCategories();
+    const showTitle = this._config.show_title !== false;
+    const title = this._config.title || DEFAULT_TITLE;
+    const headerIcon = this._config.icon || DEFAULT_ICON;
+
+    const headerHtml = showTitle
+      ? `<div class="header"><ha-icon icon="${headerIcon}"></ha-icon><span>${escapeHtml(title)}</span></div>`
+      : "";
 
     if (!visibleCategories.length) {
       this.shadowRoot.innerHTML = `
         <style>${this._css()}</style>
         <ha-card>
-          <div class="header"><ha-icon icon="${this._config.icon || DEFAULT_ICON}"></ha-icon><span>${escapeHtml(this._config.title || DEFAULT_TITLE)}</span></div>
+          ${headerHtml}
           <div class="empty">
             <ha-icon icon="mdi:eye-off-outline"></ha-icon>
             <span>Alle Kategorien sind ausgeblendet</span>
@@ -199,32 +207,46 @@ class NotificationCenterCard extends HTMLElement {
       return;
     }
 
-    if (!this._activeTab || !visibleCategories.some((def) => def.key === this._activeTab)) {
-      this._activeTab = visibleCategories[0].key;
+    if (!this._hasInteracted && (!this._expanded || !visibleCategories.some((d) => d.key === this._expanded))) {
+      this._expanded = visibleCategories[0].key;
     }
 
-    const title = this._config.title || DEFAULT_TITLE;
-    const headerIcon = this._config.icon || DEFAULT_ICON;
-    const showSearch = this._config.show_search !== false;
-
-    const tabsHtml = visibleCategories
+    const accordionHtml = visibleCategories
       .map((def) => {
         const count = this._itemsFor(def.key).length;
-        const active = this._activeTab === def.key ? "active" : "";
+        const isExpanded = this._expanded === def.key;
         const color = this._colorFor(def);
         return `
-        <button class="tab ${active}" data-tab="${def.key}" style="--tab-color:${color}">
-          <ha-icon icon="${def.icon}"></ha-icon>
-          <span>${def.label}</span>
-          ${count > 0 ? `<span class="badge">${count}</span>` : ""}
-        </button>`;
+        <ha-expansion-panel data-category="${def.key}" outlined ${isExpanded ? "expanded" : ""}>
+          <div slot="header" class="accordion-header" style="--tab-color:${color}">
+            <ha-icon icon="${def.icon}"></ha-icon>
+            <span>${def.label}</span>
+            ${count > 0 ? `<span class="badge">${count}</span>` : ""}
+          </div>
+          <div class="accordion-body">${isExpanded ? this._renderBody(def) : ""}</div>
+        </ha-expansion-panel>`;
       })
       .join("");
 
-    const activeDef = visibleCategories.find((d) => d.key === this._activeTab);
-    const allItems = this._itemsFor(this._activeTab);
-    const filters = FILTER_DEFS[this._activeTab] || [];
-    const activeFilterId = this._activeFilter[this._activeTab] || "all";
+    const expandedDef = visibleCategories.find((d) => d.key === this._expanded);
+
+    this.shadowRoot.innerHTML = `
+      <style>${this._css()}</style>
+      <ha-card>
+        ${headerHtml}
+        <div class="accordion-list">${accordionHtml}</div>
+      </ha-card>
+      ${this._detailItem && expandedDef ? this._renderPopup(expandedDef, this._detailItem) : ""}
+    `;
+
+    this._attachListeners();
+  }
+
+  _renderBody(def) {
+    const showSearch = this._config.show_search !== false;
+    const allItems = this._itemsFor(def.key);
+    const filters = FILTER_DEFS[def.key] || [];
+    const activeFilterId = this._activeFilter[def.key] || "all";
     const activeFilterDef = filters.find((f) => f.id === activeFilterId) || filters[0];
 
     const searchTerm = this._search.trim().toLowerCase();
@@ -248,32 +270,24 @@ class NotificationCenterCard extends HTMLElement {
         : "";
 
     const listHtml = items.length
-      ? items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("")
+      ? items.map((item) => this._renderRow(def.key, def, item)).join("")
       : `<div class="empty">
            <ha-icon icon="mdi:check-circle-outline"></ha-icon>
            <span>Keine offenen Einträge</span>
          </div>`;
 
-    this.shadowRoot.innerHTML = `
-      <style>${this._css()}</style>
-      <ha-card>
-        <div class="header"><ha-icon icon="${headerIcon}"></ha-icon><span>${escapeHtml(title)}</span></div>
-        <div class="tabs">${tabsHtml}</div>
-        ${
-          showSearch
-            ? `<div class="toolbar">
-                 <ha-icon icon="mdi:magnify"></ha-icon>
-                 <input type="text" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
-               </div>`
-            : ""
-        }
-        ${filterChipsHtml}
-        <div class="list">${listHtml}</div>
-      </ha-card>
-      ${this._detailItem ? this._renderPopup(activeDef, this._detailItem) : ""}
+    return `
+      ${
+        showSearch
+          ? `<div class="toolbar">
+               <ha-icon icon="mdi:magnify"></ha-icon>
+               <input type="text" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
+             </div>`
+          : ""
+      }
+      ${filterChipsHtml}
+      <div class="list">${listHtml}</div>
     `;
-
-    this._attachListeners();
   }
 
   _renderRow(category, def, item) {
@@ -315,14 +329,23 @@ class NotificationCenterCard extends HTMLElement {
       )
       .join("");
 
-    const footerButton =
-      def.key === "repairs"
-        ? `<button class="popup-primary" data-popup-goto-repairs>Zu den Reparaturen</button>`
-        : def.key === "notifications"
-        ? `<button class="popup-primary" data-popup-dismiss>Schliessen</button>`
-        : item.release_url
-        ? `<button class="popup-primary" data-popup-release-url="${escapeHtml(item.release_url)}">Update-Notizen öffnen</button>`
-        : "";
+    const footerButtons = [];
+    if (def.key === "notifications") {
+      footerButtons.push(`<button class="popup-primary" data-popup-dismiss>Schliessen</button>`);
+    } else if (def.key === "updates") {
+      if (item.in_progress) {
+        footerButtons.push(`<button class="popup-primary" disabled>Update läuft …</button>`);
+      } else {
+        footerButtons.push(`<button class="popup-primary" data-popup-install>Jetzt installieren</button>`);
+      }
+      if (item.release_url) {
+        footerButtons.push(
+          `<button class="popup-secondary" data-popup-release-url="${escapeHtml(item.release_url)}">Update-Notizen öffnen</button>`
+        );
+      }
+    } else if (def.key === "repairs") {
+      footerButtons.push(`<button class="popup-primary" data-popup-goto-repairs>Zu den Reparaturen</button>`);
+    }
 
     return `
       <div class="popup-overlay" data-popup-overlay>
@@ -333,7 +356,7 @@ class NotificationCenterCard extends HTMLElement {
             <button class="popup-close" data-popup-close><ha-icon icon="mdi:close"></ha-icon></button>
           </div>
           <div class="popup-body">${fields}</div>
-          ${footerButton ? `<div class="popup-footer">${footerButton}</div>` : ""}
+          ${footerButtons.length ? `<div class="popup-footer">${footerButtons.join("")}</div>` : ""}
         </div>
       </div>`;
   }
@@ -341,9 +364,11 @@ class NotificationCenterCard extends HTMLElement {
   _attachListeners() {
     const root = this.shadowRoot;
 
-    root.querySelectorAll("[data-tab]").forEach((el) => {
-      el.addEventListener("click", () => {
-        this._activeTab = el.getAttribute("data-tab");
+    root.querySelectorAll("ha-expansion-panel").forEach((panel) => {
+      panel.addEventListener("expanded-changed", (ev) => {
+        const category = panel.getAttribute("data-category");
+        this._hasInteracted = true;
+        this._expanded = ev.detail && ev.detail.expanded ? category : null;
         this._search = "";
         this._detailItem = null;
         this._render();
@@ -352,7 +377,7 @@ class NotificationCenterCard extends HTMLElement {
 
     root.querySelectorAll("[data-filter]").forEach((el) => {
       el.addEventListener("click", () => {
-        this._activeFilter[this._activeTab] = el.getAttribute("data-filter");
+        if (this._expanded) this._activeFilter[this._expanded] = el.getAttribute("data-filter");
         this._render();
       });
     });
@@ -376,6 +401,7 @@ class NotificationCenterCard extends HTMLElement {
       rowEl.addEventListener("click", (ev) => {
         if (ev.target.closest("[data-action]")) return;
         this._detailItem = item;
+        this._detailCategory = category;
         this._render();
       });
 
@@ -387,34 +413,32 @@ class NotificationCenterCard extends HTMLElement {
 
     const overlay = root.querySelector("[data-popup-overlay]");
     if (overlay) {
+      const closePopup = () => {
+        this._detailItem = null;
+        this._render();
+      };
       overlay.addEventListener("click", (ev) => {
-        if (ev.target === overlay) {
-          this._detailItem = null;
-          this._render();
-        }
+        if (ev.target === overlay) closePopup();
       });
       const closeBtn = root.querySelector("[data-popup-close]");
-      if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-          this._detailItem = null;
-          this._render();
-        });
-      }
+      if (closeBtn) closeBtn.addEventListener("click", closePopup);
       const dismissBtn = root.querySelector("[data-popup-dismiss]");
-      if (dismissBtn) {
-        dismissBtn.addEventListener("click", () => {
-          this._detailItem = null;
-          this._render();
-        });
-      }
+      if (dismissBtn) dismissBtn.addEventListener("click", closePopup);
       const repairsBtn = root.querySelector("[data-popup-goto-repairs]");
-      if (repairsBtn) {
-        repairsBtn.addEventListener("click", () => navigate("/config/repairs"));
-      }
+      if (repairsBtn) repairsBtn.addEventListener("click", () => navigate("/config/repairs"));
       const releaseBtn = root.querySelector("[data-popup-release-url]");
       if (releaseBtn) {
         releaseBtn.addEventListener("click", () => {
           window.open(releaseBtn.getAttribute("data-popup-release-url"), "_blank", "noopener");
+        });
+      }
+      const installBtn = root.querySelector("[data-popup-install]");
+      if (installBtn) {
+        installBtn.addEventListener("click", () => {
+          if (this._detailItem) {
+            this._callService("update", "install", { entity_id: this._detailItem.entity_id });
+          }
+          closePopup();
         });
       }
     }
@@ -432,30 +456,20 @@ class NotificationCenterCard extends HTMLElement {
         padding: 8px 16px 4px;
       }
       .header ha-icon { --mdc-icon-size: 22px; color: var(--primary-color); }
-      .tabs {
+      .accordion-list {
         display: flex;
-        gap: 4px;
-        padding: 4px 8px;
-        overflow-x: auto;
+        flex-direction: column;
+        gap: 6px;
+        padding: 8px;
       }
-      .tab {
+      ha-expansion-panel { border-radius: 8px; }
+      .accordion-header {
         display: flex;
         align-items: center;
-        gap: 6px;
-        border: none;
-        background: none;
-        font: inherit;
-        color: var(--secondary-text-color);
-        padding: 6px 10px;
-        border-radius: 16px;
-        cursor: pointer;
-        white-space: nowrap;
+        gap: 8px;
+        width: 100%;
       }
-      .tab.active {
-        color: var(--primary-text-color);
-        background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.12);
-      }
-      .tab ha-icon { color: var(--tab-color); --mdc-icon-size: 20px; }
+      .accordion-header ha-icon { color: var(--tab-color); --mdc-icon-size: 20px; }
       .badge {
         background: var(--tab-color);
         color: white;
@@ -464,12 +478,15 @@ class NotificationCenterCard extends HTMLElement {
         padding: 1px 6px;
         min-width: 16px;
         text-align: center;
+        margin-left: auto;
+        margin-right: 8px;
       }
+      .accordion-body { padding: 4px 4px 8px; }
       .toolbar {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin: 4px 16px;
+        margin: 4px 4px;
         padding: 6px 10px;
         border-radius: 8px;
         background: var(--secondary-background-color, rgba(0,0,0,0.04));
@@ -486,7 +503,7 @@ class NotificationCenterCard extends HTMLElement {
       .filters {
         display: flex;
         gap: 6px;
-        padding: 0 16px 4px;
+        padding: 4px 4px 4px;
         flex-wrap: wrap;
       }
       .chip {
@@ -503,7 +520,7 @@ class NotificationCenterCard extends HTMLElement {
         color: var(--text-primary-color, white);
         border-color: var(--primary-color);
       }
-      .list { padding: 4px 8px 8px; }
+      .list { padding: 4px 0 0; }
       .row {
         display: flex;
         align-items: flex-start;
@@ -589,11 +606,27 @@ class NotificationCenterCard extends HTMLElement {
       }
       .detail-key { color: var(--secondary-text-color); }
       .detail-value { text-align: right; word-break: break-word; }
-      .popup-footer { padding: 8px 16px 16px; text-align: right; }
+      .popup-footer {
+        padding: 8px 16px 16px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
       .popup-primary {
         border: none;
         background: var(--primary-color);
         color: var(--text-primary-color, white);
+        border-radius: 8px;
+        padding: 8px 14px;
+        cursor: pointer;
+        font: inherit;
+      }
+      .popup-primary[disabled] { opacity: 0.5; cursor: default; }
+      .popup-secondary {
+        border: 1px solid var(--divider-color, #e0e0e0);
+        background: none;
+        color: var(--primary-color);
         border-radius: 8px;
         padding: 8px 14px;
         cursor: pointer;
@@ -604,9 +637,9 @@ class NotificationCenterCard extends HTMLElement {
 }
 
 /**
- * Editor: ein normaler ha-form-Block für Titel/Icon/Entities/Sichtbarkeit,
+ * Editor: ein normaler ha-form-Block für Titel/Icon/Sichtbarkeit/Entities,
  * darunter eine handgebaute "Farben"-Sektion mit Swatch + Texteingabe pro
- * Kategorie sowie "Alle Farben zurücksetzen" - wie in den anderen Karten.
+ * Kategorie sowie "Alle Farben zurücksetzen".
  */
 class NotificationCenterCardEditor extends HTMLElement {
   setConfig(config) {
@@ -682,6 +715,7 @@ class NotificationCenterCardEditor extends HTMLElement {
     this._form = document.createElement("ha-form");
     this._form.schema = [
       { name: "title", selector: { text: {} } },
+      { name: "show_title", selector: { boolean: {} } },
       { name: "icon", selector: { icon: {} } },
       { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
       { name: "entity_updates", selector: { entity: { domain: "sensor" } } },
@@ -767,6 +801,7 @@ class NotificationCenterCardEditor extends HTMLElement {
   _labelFor(name) {
     const labels = {
       title: "Titel",
+      show_title: "Titel anzeigen",
       icon: "Icon (Kartenkopf)",
       entity_notifications: "Sensor: Benachrichtigungen",
       entity_updates: "Sensor: Updates",
@@ -783,6 +818,7 @@ class NotificationCenterCardEditor extends HTMLElement {
     const entities = config.entities || {};
     return {
       title: config.title || "",
+      show_title: config.show_title !== false,
       icon: config.icon || DEFAULT_ICON,
       entity_notifications: entities.notifications || "",
       entity_updates: entities.updates || "",
@@ -799,6 +835,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       ...previousConfig,
       type: "custom:notification-center-card",
       title: flat.title,
+      show_title: flat.show_title,
       icon: flat.icon,
       show_search: flat.show_search,
       show_notifications: flat.show_notifications,
@@ -819,7 +856,7 @@ customElements.define("notification-center-card-editor", NotificationCenterCardE
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "notification-center-card",
-  name: "Benachrichtigungszentrale",
+  name: "Notification Center",
   description:
-    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien.",
+    "Benachrichtigungen, Updates und Reparaturen als Akkordeon mit Suche, Filtern und ein-/ausblendbaren Kategorien.",
 });

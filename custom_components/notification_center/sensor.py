@@ -72,7 +72,7 @@ class _BaseSummarySensor(SensorEntity):
         self._attr_icon = icon
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
-            name="Benachrichtigungszentrale",
+            name="Notification Center",
             manufacturer="Meine smarte Welt",
             model="Notification Center",
         )
@@ -223,7 +223,7 @@ class RepairsSensor(_BaseSummarySensor):
         for issue in registry.issues.values():
             if getattr(issue, "dismissed_version", None):
                 continue
-            if getattr(issue, "is_active", True) is False:
+            if not getattr(issue, "active", True):
                 continue
             severity = getattr(issue, "severity", None)
             items.append(

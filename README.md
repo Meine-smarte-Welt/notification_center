@@ -71,12 +71,11 @@ color_update: ""
 color_repair: ""
 ```
 
-### Akkordeon statt Tabs
+### Kategorien als Tabs
 
-Die drei Kategorien liegen als aufklappbare Abschnitte (`ha-expansion-panel`)
-übereinander statt als Tabs - Icon, Name und Zähler-Badge bleiben auch bei
-eingeklapptem Abschnitt sichtbar. Suchfeld und Filterchips gehören zum
-gerade aufgeklappten Abschnitt.
+Die drei Kategorien liegen als Tabs nebeneinander (Icon, Name und
+Zähler-Badge je Tab) - passend zum Look der anderen Karten. Suchfeld und
+Filterchips gehören zum gerade aktiven Tab.
 
 ### Titel ein-/ausblenden
 
@@ -86,16 +85,30 @@ die Kategorien selbst auf einem Dashboard stehen sollen.
 ### Kategorien ein-/ausblenden
 
 `show_notifications`, `show_updates` und `show_repairs` blenden die jeweilige
-Kategorie komplett aus - Abschnitt, Zähler und Inhalt verschwinden. Ist keine
+Kategorie komplett aus - Tab, Zähler und Inhalt verschwinden. Ist keine
 Kategorie mehr aktiv, zeigt die Karte einen entsprechenden Hinweis.
+
+### Benachrichtigungen löschen
+
+Jede einzelne Benachrichtigung hat ein Löschen-Icon in der Zeile sowie im
+Detail-Popup (`persistent_notification.dismiss`). Oberhalb der Liste steht
+zusätzlich *Alle löschen*, sobald die Kategorie „Benachrichtigungen" aktiv
+ist und mindestens ein Eintrag vorhanden ist - ruft
+`persistent_notification.dismiss_all` auf.
 
 ### Farben
 
-Im grafischen Editor gibt es zu jeder Kategorie ein Farbfeld: eine
-Farbauswahl (Swatch) zum Klicken plus ein Textfeld für Hex, `rgb()`, `hsl()`,
-CSS-Farbnamen oder `var(--…)` - genau wie bei FRITZ!Box Netzwerk. Ein Klick
-auf *Alle Farben zurücksetzen* leert alle drei Felder auf einmal, die Karte
-folgt dann wieder dem aktiven Theme.
+Im grafischen Editor, Abschnitt *Farben*: eine Farbauswahl (Swatch) zum
+Klicken plus ein Textfeld für Hex, `rgb()`, `hsl()`, CSS-Farbnamen oder
+`var(--…)` - genau wie bei FRITZ!Box Netzwerk. Ein Klick auf *Alle Farben
+zurücksetzen* leert alle drei Felder auf einmal, die Karte folgt dann wieder
+dem aktiven Theme.
+
+### Editor in Abschnitten
+
+Der grafische Editor ist in aufklappbare Abschnitte gegliedert - Sensoren,
+Darstellung, Kategorien, Farben - ebenfalls wie bei den anderen
+Integrationen.
 
 ## Android-Widget
 
@@ -122,19 +135,30 @@ Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten
 
 ## Versionshistorie
 
-### 0.0.1b1 – Icon nachgerüstet
+### 0.0.1b2 – Tabs zurück, Editor als Akkordeon, Löschen, Such-Fix
 
-- Integrations-Icon lokal unter `custom_components/notification_center/brand/`
-  ergänzt (`icon.png` 256×256, `icon@2x.png` 512×512) - genutzt über die seit
-  Home Assistant 2026.3 unterstützten lokalen Brand-Images, ohne Pull
-  Request nach `home-assistant/brands`
+- Kategorien wieder als **Tabs nebeneinander** (die Akkordeon-Darstellung aus
+  0.0.1b1 war ein Missverständnis - gemeint war der Editor, nicht die Karte)
+- Grafischer Editor jetzt in aufklappbare Abschnitte gegliedert: *Sensoren*,
+  *Darstellung*, *Kategorien*, *Farben*
+- **Löschen** je einzelner Benachrichtigung jetzt auch im Detail-Popup (rief
+  vorher nur das Popup zu, ohne die Benachrichtigung tatsächlich zu
+  entfernen), zusätzlich **„Alle löschen"** oberhalb der Liste
+  (`persistent_notification.dismiss_all`)
+- **Bugfix Suche:** Zeichen wie „e" im Suchfeld öffneten Home Assistants
+  globale Quick-Bar, weil Home Assistant bei Tastaturkürzeln nur das
+  Zielelement prüft und das durch das Shadow DOM der Karte auf das
+  Karten-Element zurückgesetzt wurde, statt das tatsächliche Eingabefeld zu
+  sehen. Tastatur-Events aus Such- und Farbfeldern werden jetzt nicht mehr
+  nach aussen weitergegeben.
 
-## Versionshistorie
-
-### 0.0.1b1 – Umbenennung, Akkordeon, Bugfix
+### 0.0.1b1 – Umbenennung, Bugfix Reparaturen, Update-Installation im Popup
 
 - Integration und Karte umbenannt in **Notification Center** (Domain bleibt
-  `notification_center`, entsprechend auch neue Entity-IDs)
+  `notification_center`, entsprechend auch neue Entity-IDs) sowie
+  Integrations-Icon lokal unter `custom_components/notification_center/brand/`
+  ergänzt (`icon.png` 256×256, `icon@2x.png` 512×512) über die seit Home
+  Assistant 2026.3 unterstützten lokalen Brand-Images
 - **Bugfix Reparaturen-Sensor:** zählte bisher auch längst erledigte,
   archivierte Issues mit (falsches Attribut geprüft). Home Assistant markiert
   nicht-persistente Issues nach einem Neustart zunächst als inaktiv (`active:
@@ -142,10 +166,8 @@ Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten
   Problem in dieser Session erneut feststellt - genau dieses Feld wird jetzt
   korrekt ausgewertet, daher stimmt die Anzahl jetzt mit Einstellungen →
   System → Reparaturen überein
-- Kategorien jetzt als **Akkordeon** (`ha-expansion-panel`) statt Tabs,
-  Zähler-Badge bleibt auch eingeklappt sichtbar
 - Update-Popup zeigt jetzt zusätzlich zu „Update-Notizen öffnen" auch einen
-  **„Jetzt installieren"**-Button
+  „Jetzt installieren"-Button
 - Kopfzeile (Titel + Icon) über `show_title` ein-/ausblendbar
 
 ### 0.0.1b0 – Vorabversion (Pre-Release)

@@ -1,10 +1,13 @@
 /**
  * notification-center-card
  *
- * Drei Kategorien (Benachrichtigungen / Updates / Reparaturen) als
- * Accordion (ha-expansion-panel, wie in anderen Home-Assistant-UIs), mit
- * Suche, Filterleiste, Detail-Popup, einzeln ein-/ausblendbaren Kategorien,
- * ein-/ausblendbarem Titel und frei wählbaren Farben.
+ * Drei Kategorien (Benachrichtigungen / Updates / Reparaturen) als Tabs
+ * nebeneinander - im Look & Feel an die Schwester-Karten "FRITZ!Box Anrufe"
+ * und "FRITZ!Box Netzwerk" angelehnt. Suche, Filterleiste, Detail-Popup,
+ * einzeln ein-/ausblendbare Kategorien, ein-/ausblendbarer Titel und frei
+ * wählbare Farben. Der grafische Editor ist in aufklappbare Abschnitte
+ * gegliedert (Sensoren / Darstellung / Kategorien / Farben), ebenfalls wie
+ * bei den anderen Integrationen.
  *
  * Erwartete Sensoren (siehe custom_components/notification_center/sensor.py):
  *   state              -> Anzahl offener Einträge
@@ -90,6 +93,20 @@ function isCategoryVisible(config, def) {
   return config[`show_${def.key}`] !== false;
 }
 
+// Verhindert, dass Home Assistants globale Tastenkürzel (Quick-Bar: "e",
+// "c", "m", …) auslösen, während im Such- oder Textfeld der Karte/des
+// Editors getippt wird. Home Assistants Quick-Bar-Listener hängt am
+// document und prüft ev.target - liegt das Feld in unserem Shadow DOM,
+// wird das Event beim Aufsteigen an der Shadow-Grenze auf das Karten-
+// Element zurückgesetzt (Retargeting), sodass die Prüfung "ist das ein
+// Eingabefeld?" fehlschlägt und die Quick-Bar trotzdem aufgeht. Deshalb
+// stoppen wir die Weiterleitung hier explizit.
+function stopKeyPropagation(el) {
+  ["keydown", "keypress", "keyup"].forEach((type) => {
+    el.addEventListener(type, (ev) => ev.stopPropagation());
+  });
+}
+
 class NotificationCenterCard extends HTMLElement {
   static getConfigElement() {
     return document.createElement("notification-center-card-editor");
@@ -116,12 +133,10 @@ class NotificationCenterCard extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
-    this._expanded = null;
-    this._hasInteracted = false;
+    this._activeTab = null;
     this._search = "";
     this._activeFilter = { notifications: "all", updates: "all", repairs: "all" };
     this._detailItem = null;
-    this._detailCategory = null;
   }
 
   setConfig(config) {
@@ -138,7 +153,7 @@ class NotificationCenterCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 6;
+    return 5;
   }
 
   _visibleCategories() {
@@ -182,6 +197,10 @@ class NotificationCenterCard extends HTMLElement {
     }
   }
 
+  _handleDismissAll() {
+    this._callService("persistent_notification", "dismiss_all", {});
+  }
+
   _render() {
     if (!this._config || !this._hass || !this.shadowRoot) return;
 
@@ -207,46 +226,28 @@ class NotificationCenterCard extends HTMLElement {
       return;
     }
 
-    if (!this._hasInteracted && (!this._expanded || !visibleCategories.some((d) => d.key === this._expanded))) {
-      this._expanded = visibleCategories[0].key;
+    if (!this._activeTab || !visibleCategories.some((def) => def.key === this._activeTab)) {
+      this._activeTab = visibleCategories[0].key;
     }
 
-    const accordionHtml = visibleCategories
+    const tabsHtml = visibleCategories
       .map((def) => {
         const count = this._itemsFor(def.key).length;
-        const isExpanded = this._expanded === def.key;
+        const active = this._activeTab === def.key ? "active" : "";
         const color = this._colorFor(def);
         return `
-        <ha-expansion-panel data-category="${def.key}" outlined ${isExpanded ? "expanded" : ""}>
-          <div slot="header" class="accordion-header" style="--tab-color:${color}">
-            <ha-icon icon="${def.icon}"></ha-icon>
-            <span>${def.label}</span>
-            ${count > 0 ? `<span class="badge">${count}</span>` : ""}
-          </div>
-          <div class="accordion-body">${isExpanded ? this._renderBody(def) : ""}</div>
-        </ha-expansion-panel>`;
+        <button class="tab ${active}" data-tab="${def.key}" style="--tab-color:${color}">
+          <ha-icon icon="${def.icon}"></ha-icon>
+          <span>${def.label}</span>
+          ${count > 0 ? `<span class="badge">${count}</span>` : ""}
+        </button>`;
       })
       .join("");
 
-    const expandedDef = visibleCategories.find((d) => d.key === this._expanded);
-
-    this.shadowRoot.innerHTML = `
-      <style>${this._css()}</style>
-      <ha-card>
-        ${headerHtml}
-        <div class="accordion-list">${accordionHtml}</div>
-      </ha-card>
-      ${this._detailItem && expandedDef ? this._renderPopup(expandedDef, this._detailItem) : ""}
-    `;
-
-    this._attachListeners();
-  }
-
-  _renderBody(def) {
-    const showSearch = this._config.show_search !== false;
-    const allItems = this._itemsFor(def.key);
-    const filters = FILTER_DEFS[def.key] || [];
-    const activeFilterId = this._activeFilter[def.key] || "all";
+    const activeDef = visibleCategories.find((d) => d.key === this._activeTab);
+    const allItems = this._itemsFor(this._activeTab);
+    const filters = FILTER_DEFS[this._activeTab] || [];
+    const activeFilterId = this._activeFilter[this._activeTab] || "all";
     const activeFilterDef = filters.find((f) => f.id === activeFilterId) || filters[0];
 
     const searchTerm = this._search.trim().toLowerCase();
@@ -256,6 +257,28 @@ class NotificationCenterCard extends HTMLElement {
       const haystack = `${item.title || ""} ${item.message || ""}`.toLowerCase();
       return haystack.includes(searchTerm);
     });
+
+    const showSearch = this._config.show_search !== false;
+    const showDismissAll = this._activeTab === "notifications" && allItems.length > 0;
+
+    const toolbarHtml =
+      showSearch || showDismissAll
+        ? `<div class="toolbar-row">
+             ${
+               showSearch
+                 ? `<div class="toolbar">
+                      <ha-icon icon="mdi:magnify"></ha-icon>
+                      <input type="text" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
+                    </div>`
+                 : ""
+             }
+             ${
+               showDismissAll
+                 ? `<button class="dismiss-all"><ha-icon icon="mdi:notification-clear-all"></ha-icon><span>Alle löschen</span></button>`
+                 : ""
+             }
+           </div>`
+        : "";
 
     const filterChipsHtml =
       filters.length > 1
@@ -270,24 +293,25 @@ class NotificationCenterCard extends HTMLElement {
         : "";
 
     const listHtml = items.length
-      ? items.map((item) => this._renderRow(def.key, def, item)).join("")
+      ? items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("")
       : `<div class="empty">
            <ha-icon icon="mdi:check-circle-outline"></ha-icon>
            <span>Keine offenen Einträge</span>
          </div>`;
 
-    return `
-      ${
-        showSearch
-          ? `<div class="toolbar">
-               <ha-icon icon="mdi:magnify"></ha-icon>
-               <input type="text" placeholder="Suchen …" value="${escapeHtml(this._search)}" />
-             </div>`
-          : ""
-      }
-      ${filterChipsHtml}
-      <div class="list">${listHtml}</div>
+    this.shadowRoot.innerHTML = `
+      <style>${this._css()}</style>
+      <ha-card>
+        ${headerHtml}
+        <div class="tabs">${tabsHtml}</div>
+        ${toolbarHtml}
+        ${filterChipsHtml}
+        <div class="list">${listHtml}</div>
+      </ha-card>
+      ${this._detailItem ? this._renderPopup(activeDef, this._detailItem) : ""}
     `;
+
+    this._attachListeners();
   }
 
   _renderRow(category, def, item) {
@@ -331,7 +355,7 @@ class NotificationCenterCard extends HTMLElement {
 
     const footerButtons = [];
     if (def.key === "notifications") {
-      footerButtons.push(`<button class="popup-primary" data-popup-dismiss>Schliessen</button>`);
+      footerButtons.push(`<button class="popup-primary" data-popup-delete>Löschen</button>`);
     } else if (def.key === "updates") {
       if (item.in_progress) {
         footerButtons.push(`<button class="popup-primary" disabled>Update läuft …</button>`);
@@ -364,11 +388,9 @@ class NotificationCenterCard extends HTMLElement {
   _attachListeners() {
     const root = this.shadowRoot;
 
-    root.querySelectorAll("ha-expansion-panel").forEach((panel) => {
-      panel.addEventListener("expanded-changed", (ev) => {
-        const category = panel.getAttribute("data-category");
-        this._hasInteracted = true;
-        this._expanded = ev.detail && ev.detail.expanded ? category : null;
+    root.querySelectorAll("[data-tab]").forEach((el) => {
+      el.addEventListener("click", () => {
+        this._activeTab = el.getAttribute("data-tab");
         this._search = "";
         this._detailItem = null;
         this._render();
@@ -377,17 +399,23 @@ class NotificationCenterCard extends HTMLElement {
 
     root.querySelectorAll("[data-filter]").forEach((el) => {
       el.addEventListener("click", () => {
-        if (this._expanded) this._activeFilter[this._expanded] = el.getAttribute("data-filter");
+        this._activeFilter[this._activeTab] = el.getAttribute("data-filter");
         this._render();
       });
     });
 
     const searchInput = root.querySelector(".toolbar input");
     if (searchInput) {
+      stopKeyPropagation(searchInput);
       searchInput.addEventListener("input", (ev) => {
         this._search = ev.target.value;
         this._render();
       });
+    }
+
+    const dismissAllBtn = root.querySelector(".dismiss-all");
+    if (dismissAllBtn) {
+      dismissAllBtn.addEventListener("click", () => this._handleDismissAll());
     }
 
     root.querySelectorAll(".row").forEach((rowEl) => {
@@ -401,7 +429,6 @@ class NotificationCenterCard extends HTMLElement {
       rowEl.addEventListener("click", (ev) => {
         if (ev.target.closest("[data-action]")) return;
         this._detailItem = item;
-        this._detailCategory = category;
         this._render();
       });
 
@@ -422,8 +449,17 @@ class NotificationCenterCard extends HTMLElement {
       });
       const closeBtn = root.querySelector("[data-popup-close]");
       if (closeBtn) closeBtn.addEventListener("click", closePopup);
-      const dismissBtn = root.querySelector("[data-popup-dismiss]");
-      if (dismissBtn) dismissBtn.addEventListener("click", closePopup);
+      const deleteBtn = root.querySelector("[data-popup-delete]");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => {
+          if (this._detailItem) {
+            this._callService("persistent_notification", "dismiss", {
+              notification_id: this._detailItem.id,
+            });
+          }
+          closePopup();
+        });
+      }
       const repairsBtn = root.querySelector("[data-popup-goto-repairs]");
       if (repairsBtn) repairsBtn.addEventListener("click", () => navigate("/config/repairs"));
       const releaseBtn = root.querySelector("[data-popup-release-url]");
@@ -456,20 +492,30 @@ class NotificationCenterCard extends HTMLElement {
         padding: 8px 16px 4px;
       }
       .header ha-icon { --mdc-icon-size: 22px; color: var(--primary-color); }
-      .accordion-list {
+      .tabs {
         display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 8px;
+        gap: 4px;
+        padding: 4px 8px;
+        overflow-x: auto;
       }
-      ha-expansion-panel { border-radius: 8px; }
-      .accordion-header {
+      .tab {
         display: flex;
         align-items: center;
-        gap: 8px;
-        width: 100%;
+        gap: 6px;
+        border: none;
+        background: none;
+        font: inherit;
+        color: var(--secondary-text-color);
+        padding: 6px 10px;
+        border-radius: 16px;
+        cursor: pointer;
+        white-space: nowrap;
       }
-      .accordion-header ha-icon { color: var(--tab-color); --mdc-icon-size: 20px; }
+      .tab.active {
+        color: var(--primary-text-color);
+        background: rgba(var(--rgb-primary-color, 3, 169, 244), 0.12);
+      }
+      .tab ha-icon { color: var(--tab-color); --mdc-icon-size: 20px; }
       .badge {
         background: var(--tab-color);
         color: white;
@@ -478,15 +524,18 @@ class NotificationCenterCard extends HTMLElement {
         padding: 1px 6px;
         min-width: 16px;
         text-align: center;
-        margin-left: auto;
-        margin-right: 8px;
       }
-      .accordion-body { padding: 4px 4px 8px; }
+      .toolbar-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 4px 16px;
+      }
       .toolbar {
         display: flex;
         align-items: center;
         gap: 8px;
-        margin: 4px 4px;
+        flex: 1;
         padding: 6px 10px;
         border-radius: 8px;
         background: var(--secondary-background-color, rgba(0,0,0,0.04));
@@ -500,10 +549,24 @@ class NotificationCenterCard extends HTMLElement {
         color: var(--primary-text-color);
         flex: 1;
       }
+      .dismiss-all {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        border: none;
+        background: none;
+        color: var(--primary-color);
+        font: inherit;
+        font-size: 0.85rem;
+        cursor: pointer;
+        padding: 6px 8px;
+        white-space: nowrap;
+      }
+      .dismiss-all ha-icon { --mdc-icon-size: 18px; }
       .filters {
         display: flex;
         gap: 6px;
-        padding: 4px 4px 4px;
+        padding: 4px 16px 4px;
         flex-wrap: wrap;
       }
       .chip {
@@ -520,7 +583,7 @@ class NotificationCenterCard extends HTMLElement {
         color: var(--text-primary-color, white);
         border-color: var(--primary-color);
       }
-      .list { padding: 4px 0 0; }
+      .list { padding: 4px 8px 8px; }
       .row {
         display: flex;
         align-items: flex-start;
@@ -637,9 +700,10 @@ class NotificationCenterCard extends HTMLElement {
 }
 
 /**
- * Editor: ein normaler ha-form-Block für Titel/Icon/Sichtbarkeit/Entities,
- * darunter eine handgebaute "Farben"-Sektion mit Swatch + Texteingabe pro
- * Kategorie sowie "Alle Farben zurücksetzen".
+ * Editor: in aufklappbare Abschnitte (ha-expansion-panel) gegliedert -
+ * Sensoren / Darstellung / Kategorien / Farben - wie bei den anderen
+ * Integrationen. Innerhalb jedes Abschnitts ein ha-form-Block, bei Farben
+ * eine handgebaute Sektion mit Swatch + Texteingabe + "Alle zurücksetzen".
  */
 class NotificationCenterCardEditor extends HTMLElement {
   setConfig(config) {
@@ -653,22 +717,37 @@ class NotificationCenterCardEditor extends HTMLElement {
 
   set hass(hass) {
     this._hass = hass;
-    if (this._form) this._form.hass = hass;
+    this._forms.forEach((form) => (form.hass = hass));
+  }
+
+  _section(title, icon, expanded) {
+    const panel = document.createElement("ha-expansion-panel");
+    panel.setAttribute("outlined", "");
+    if (expanded) panel.setAttribute("expanded", "");
+    panel.innerHTML = `
+      <div slot="header" class="section-header">
+        <ha-icon icon="${icon}"></ha-icon>
+        <span>${title}</span>
+      </div>
+    `;
+    return panel;
   }
 
   _buildEditor() {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>
-        .color-section { padding: 8px 16px 16px; }
-        .color-header {
+        .editor-list { display: flex; flex-direction: column; gap: 6px; padding: 8px; }
+        ha-expansion-panel { border-radius: 8px; }
+        .section-header {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 8px;
+          width: 100%;
           font-weight: 500;
-          margin-bottom: 8px;
         }
-        .color-header ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
+        .section-header ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
+        .section-body { padding: 8px 12px 12px; }
         .color-row {
           display: flex;
           align-items: center;
@@ -708,34 +787,77 @@ class NotificationCenterCardEditor extends HTMLElement {
         }
         .reset-btn ha-icon { --mdc-icon-size: 18px; }
       </style>
-      <div id="root"></div>
+      <div class="editor-list" id="list"></div>
     `;
-    const root = this.shadowRoot.getElementById("root");
+    const list = this.shadowRoot.getElementById("list");
+    this._forms = [];
 
-    this._form = document.createElement("ha-form");
-    this._form.schema = [
-      { name: "title", selector: { text: {} } },
-      { name: "show_title", selector: { boolean: {} } },
-      { name: "icon", selector: { icon: {} } },
+    // --- Sensoren ---
+    const sensorsPanel = this._section("Sensoren", "mdi:database-outline", true);
+    const sensorsBody = document.createElement("div");
+    sensorsBody.className = "section-body";
+    const sensorsForm = document.createElement("ha-form");
+    sensorsForm.schema = [
       { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
       { name: "entity_updates", selector: { entity: { domain: "sensor" } } },
       { name: "entity_repairs", selector: { entity: { domain: "sensor" } } },
+    ];
+    sensorsForm.computeLabel = (schema) => this._labelFor(schema.name);
+    sensorsForm.addEventListener("value-changed", (ev) => {
+      this._config = this._unflatten(ev.detail.value, this._config);
+      this._emit();
+    });
+    sensorsBody.appendChild(sensorsForm);
+    sensorsPanel.appendChild(sensorsBody);
+    list.appendChild(sensorsPanel);
+    this._forms.push(sensorsForm);
+
+    // --- Darstellung ---
+    const displayPanel = this._section("Darstellung", "mdi:view-dashboard-outline", false);
+    const displayBody = document.createElement("div");
+    displayBody.className = "section-body";
+    const displayForm = document.createElement("ha-form");
+    displayForm.schema = [
+      { name: "title", selector: { text: {} } },
+      { name: "show_title", selector: { boolean: {} } },
+      { name: "icon", selector: { icon: {} } },
       { name: "show_search", selector: { boolean: {} } },
+    ];
+    displayForm.computeLabel = (schema) => this._labelFor(schema.name);
+    displayForm.addEventListener("value-changed", (ev) => {
+      this._config = this._unflatten(ev.detail.value, this._config);
+      this._emit();
+    });
+    displayBody.appendChild(displayForm);
+    displayPanel.appendChild(displayBody);
+    list.appendChild(displayPanel);
+    this._forms.push(displayForm);
+
+    // --- Kategorien ---
+    const categoriesPanel = this._section("Kategorien", "mdi:eye-outline", false);
+    const categoriesBody = document.createElement("div");
+    categoriesBody.className = "section-body";
+    const categoriesForm = document.createElement("ha-form");
+    categoriesForm.schema = [
       { name: "show_notifications", selector: { boolean: {} } },
       { name: "show_updates", selector: { boolean: {} } },
       { name: "show_repairs", selector: { boolean: {} } },
     ];
-    this._form.computeLabel = (schema) => this._labelFor(schema.name);
-    this._form.addEventListener("value-changed", (ev) => {
+    categoriesForm.computeLabel = (schema) => this._labelFor(schema.name);
+    categoriesForm.addEventListener("value-changed", (ev) => {
       this._config = this._unflatten(ev.detail.value, this._config);
       this._emit();
     });
-    root.appendChild(this._form);
+    categoriesBody.appendChild(categoriesForm);
+    categoriesPanel.appendChild(categoriesBody);
+    list.appendChild(categoriesPanel);
+    this._forms.push(categoriesForm);
 
-    const colorSection = document.createElement("div");
-    colorSection.className = "color-section";
-    colorSection.innerHTML = `
-      <div class="color-header"><ha-icon icon="mdi:palette-outline"></ha-icon><span>Farben (leer = aktives Theme)</span></div>
+    // --- Farben ---
+    const colorsPanel = this._section("Farben", "mdi:palette-outline", false);
+    const colorsBody = document.createElement("div");
+    colorsBody.className = "section-body";
+    colorsBody.innerHTML = `
       <div class="color-row" data-key="color_notification">
         <label>Benachrichtigungen</label>
         <input type="color" />
@@ -753,15 +875,17 @@ class NotificationCenterCardEditor extends HTMLElement {
       </div>
       <button class="reset-btn"><ha-icon icon="mdi:restore"></ha-icon><span>Alle Farben zurücksetzen</span></button>
     `;
-    root.appendChild(colorSection);
+    colorsPanel.appendChild(colorsBody);
+    list.appendChild(colorsPanel);
 
     this._colorInputs = {};
-    colorSection.querySelectorAll(".color-row").forEach((row) => {
+    colorsBody.querySelectorAll(".color-row").forEach((row) => {
       const key = row.getAttribute("data-key");
       const swatch = row.querySelector('input[type="color"]');
       const text = row.querySelector('input[type="text"]');
       this._colorInputs[key] = { swatch, text };
 
+      stopKeyPropagation(text);
       swatch.addEventListener("input", () => {
         text.value = swatch.value;
         this._config[key] = swatch.value;
@@ -774,7 +898,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       });
     });
 
-    colorSection.querySelector(".reset-btn").addEventListener("click", () => {
+    colorsBody.querySelector(".reset-btn").addEventListener("click", () => {
       ["color_notification", "color_update", "color_repair"].forEach((key) => {
         this._config[key] = "";
         this._colorInputs[key].text.value = "";
@@ -785,7 +909,8 @@ class NotificationCenterCardEditor extends HTMLElement {
   }
 
   _syncFromConfig() {
-    this._form.data = this._flatten(this._config);
+    const flat = this._flatten(this._config);
+    this._forms.forEach((form) => (form.data = flat));
     ["color_notification", "color_update", "color_repair"].forEach((key) => {
       const value = this._config[key] || "";
       const pair = this._colorInputs[key];
@@ -858,5 +983,5 @@ window.customCards.push({
   type: "notification-center-card",
   name: "Notification Center",
   description:
-    "Benachrichtigungen, Updates und Reparaturen als Akkordeon mit Suche, Filtern und ein-/ausblendbaren Kategorien.",
+    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien.",
 });

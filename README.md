@@ -121,24 +121,55 @@ Quelltext - je Sensor einzeln sowie für alle drei zusammen, jeweils mit einem
 Smartphone, um ihn direkt im Widget-Bereich der Android-App wieder
 einzufügen:
 
+Die Quelltexte sind für Android-Widgets optimiert (die verstehen kein CSS, nur
+einfaches HTML): farbige Zahl in der Kategorie-Farbe aus dem Abschnitt *Farben*
+(nur Hex-Werte, sonst Standardfarbe), korrekte Einzahl/Mehrzahl, darunter der
+Kurztext des ersten Eintrags. Bei 0 Einträgen erscheint ein grünes
+„✓ Alles erledigt". Beispiel für Updates:
+
 ```
-{{ state_attr('sensor.notification_center_updates', 'summary') }}
+{%- set n = states('sensor.notification_center_updates') | int(0) -%}
+{% if n == 0 -%}
+<b><font color="#43a047">✓ Keine Updates</font></b><br>
+<small>Alles erledigt</small>
+{%- else -%}
+<b><font color="#fb8c00">{{ n }}</font> {{ 'Update' if n == 1 else 'Updates' }}</b><br>
+<small>{{ state_attr('sensor.notification_center_updates', 'summary') }}</small>
+{%- endif %}
 ```
 
-Für alle drei Kategorien auf einen Blick, z. B. als mehrzeiliges
-Template-Widget (genau das liefert der Kopieren-Button im Editor):
-
-```
-{{ states('sensor.notification_center_benachrichtigungen') }} Benachrichtigung(en)
-{{ states('sensor.notification_center_updates') }} Update(s)
-{{ states('sensor.notification_center_reparaturen') }} Reparatur(en)
-```
+Zusätzlich gibt es *Alle drei zusammen* (drei Zeilen, Kategorien ohne Einträge
+grau). Hintergrund-, Textfarbe und Schriftgröße stellst du in der
+Companion-App beim Widget selbst ein.
 
 Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 (Android-Einstellungen → Benachrichtigungen → Benachrichtigungszugriff →
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.4 – Karte erscheint unter „Ressourcen"
+
+- Die Karte wird jetzt wie bei FRITZ!Box Anrufe als **Lovelace-Ressource**
+  (Typ `module`) angelegt und ist damit unter *Einstellungen → Dashboards →
+  Ressourcen verwalten* sichtbar. Bei einem Update wird der Eintrag mit
+  neuer `?v=`-Version aktualisiert, es entstehen keine Duplikate.
+- `add_extra_js_url` entfällt (doppeltes Laden kann in der Companion-App dazu
+  führen, dass die Karte gar nicht geladen wird).
+- Im YAML-Modus muss die Ressource
+  `/notification_center_files/notification-center-card.js` (Typ `module`)
+  weiterhin von Hand eingetragen werden.
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren.
+
+### 0.0.3 – Schönere Android-Widgets
+
+- Widget-Quelltexte neu gestaltet: farbige Zahl (Farben aus dem Editor),
+  korrekte Einzahl/Mehrzahl statt „(en)/(s)", Kurztext klein darunter, grünes
+  „✓ Alles erledigt" bei 0 Einträgen
+- Behebt zusammengezogene Zeilen im „Alle drei"-Widget: es werden jetzt
+  `<br>`-Umbrüche verwendet
+- Quelltext aktualisiert sich live, wenn im Abschnitt *Farben* eine Farbe
+  geändert wird
 
 ### 0.0.2 – Farbwähler, Suche, Kopieren je Sensor, Widgets zuletzt
 

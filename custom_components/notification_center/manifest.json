@@ -4,8 +4,11 @@
   "codeowners": [],
   "config_flow": true,
   "documentation": "https://github.com/Meine-smarte-Welt/notification_center",
-  "iot_class": "local_push",
   "issue_tracker": "https://github.com/Meine-smarte-Welt/notification_center/issues",
+  "after_dependencies": [
+    "lovelace"
+  ],
+  "iot_class": "local_push",
   "requirements": [],
-  "version": "0.0.2"
+  "version": "0.0.4"
 }

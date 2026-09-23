@@ -891,11 +891,41 @@ const EDITOR_STYLES = `
   .nc-copy-status.fail { color: var(--error-color, #e53935); }
 `;
 
+// Android-Template-Widgets verstehen kein CSS, nur einfaches HTML
+// (<b>, <font color>, <small>, <br>) - deshalb hier feste Hex-Farben. Die
+// Kategorie-Farben aus dem Abschnitt "Farben" werden übernommen, sofern sie
+// als Hex vorliegen (sonst Standardfarbe der Karte).
 const WIDGET_SENSORS = [
-  { key: "notifications", label: "Benachrichtigungen", noun: "Benachrichtigung(en)" },
-  { key: "updates", label: "Updates", noun: "Update(s)" },
-  { key: "repairs", label: "Reparaturen", noun: "Reparatur(en)" },
+  {
+    key: "notifications",
+    label: "Benachrichtigungen",
+    singular: "Benachrichtigung",
+    plural: "Benachrichtigungen",
+    none: "Keine Benachrichtigungen",
+    colorKey: "color_notification",
+    fallbackHex: "#0288d1",
+  },
+  {
+    key: "updates",
+    label: "Updates",
+    singular: "Update",
+    plural: "Updates",
+    none: "Keine Updates",
+    colorKey: "color_update",
+    fallbackHex: "#fb8c00",
+  },
+  {
+    key: "repairs",
+    label: "Reparaturen",
+    singular: "Reparatur",
+    plural: "Reparaturen",
+    none: "Keine Reparaturen",
+    colorKey: "color_repair",
+    fallbackHex: "#e53935",
+  },
 ];
+const WIDGET_OK_HEX = "#43a047";
+const WIDGET_MUTED_HEX = "#9e9e9e";
 
 class NotificationCenterCardEditor extends HTMLElement {
   constructor() {
@@ -1064,6 +1094,14 @@ class NotificationCenterCardEditor extends HTMLElement {
         ? `Aktuell verwendet: ${raw}`
         : `Aktuell verwendet (Standard): ${field.fallbackHex}`;
     });
+    this._refreshWidgetSnippets();
+  }
+
+  _refreshWidgetSnippets() {
+    if (!this._widgetBlocks) return;
+    Object.entries(this._widgetBlocks).forEach(([key, block]) => {
+      block.pre.textContent = this._widgetSnippetText(key) || "Bitte zuerst den Sensor zuweisen.";
+    });
   }
 
   _buildWidgetSection(body) {
@@ -1078,7 +1116,7 @@ class NotificationCenterCardEditor extends HTMLElement {
     const hint = document.createElement("p");
     hint.className = "nc-hint";
     hint.textContent =
-      "Für ein Android-Template-Widget der Home-Assistant-App: pro Sensor einzeln oder alle drei zusammen kopieren.";
+      "Für ein Android-Template-Widget der Home-Assistant-App: pro Sensor einzeln oder alle drei zusammen kopieren. Farben folgen dem Abschnitt „Farben“ (nur Hex-Werte).";
     body.appendChild(hint);
 
     this._widgetBlocks = {};
@@ -1169,30 +1207,63 @@ class NotificationCenterCardEditor extends HTMLElement {
     return ok;
   }
 
+  _widgetColor(def) {
+    const raw = String((this._config && this._config[def.colorKey]) || "").trim();
+    return HEX_COLOR_RE.test(raw) ? normalizeHex(raw).toLowerCase() : def.fallbackHex;
+  }
+
+  // Erzeugt den Template-Quelltext für das Android-Widget: farbige Zahl,
+  // korrekte Einzahl/Mehrzahl, "Alles erledigt" in Grün bei 0 Einträgen.
+  // Ausgabe bewusst mit <br> statt Zeilenumbrüchen (Android-Widgets fassen
+  // Umbrüche sonst zu einer Zeile zusammen) und mit {%- -%}, damit keine
+  // Leerzeilen entstehen.
   _widgetSnippetText(which) {
     const entities = (this._config && this._config.entities) || {};
-    const lineFor = (def) =>
-      entities[def.key] ? `{{ states('${entities[def.key]}') }} ${def.noun}` : null;
+
     if (which === "all") {
-      const lines = WIDGET_SENSORS.map(lineFor).filter(Boolean);
-      return lines.join("\n");
+      const defs = WIDGET_SENSORS.filter((d) => entities[d.key]);
+      if (!defs.length) return "";
+      const sets = defs
+        .map((d, i) => `{%- set n${i} = states('${entities[d.key]}') | int(0) -%}`)
+        .join("\n");
+      const total = defs.map((_, i) => `n${i}`).join(" + ");
+      const lines = defs
+        .map((d, i) => {
+          const color = this._widgetColor(d);
+          return (
+            `<font color="{{ '${color}' if n${i} else '${WIDGET_MUTED_HEX}' }}"><b>{{ n${i} }}</b></font> ` +
+            `{{ '${d.singular}' if n${i} == 1 else '${d.plural}' }}`
+          );
+        })
+        .join("<br>\n");
+      return (
+        `${sets}\n` +
+        `{% if ${total} == 0 -%}\n` +
+        `<b><font color="${WIDGET_OK_HEX}">✓ Alles erledigt</font></b>\n` +
+        `{%- else -%}\n${lines}\n{%- endif %}`
+      );
     }
+
     const def = WIDGET_SENSORS.find((d) => d.key === which);
     const entityId = def && entities[def.key];
     if (!entityId) return "";
-    return `{{ states('${entityId}') }} ${def.noun}\n{{ state_attr('${entityId}', 'summary') }}`;
+    const color = this._widgetColor(def);
+    return (
+      `{%- set n = states('${entityId}') | int(0) -%}\n` +
+      `{% if n == 0 -%}\n` +
+      `<b><font color="${WIDGET_OK_HEX}">✓ ${def.none}</font></b><br>\n` +
+      `<small>Alles erledigt</small>\n` +
+      `{%- else -%}\n` +
+      `<b><font color="${color}">{{ n }}</font> {{ '${def.singular}' if n == 1 else '${def.plural}' }}</b><br>\n` +
+      `<small>{{ state_attr('${entityId}', 'summary') }}</small>\n` +
+      `{%- endif %}`
+    );
   }
 
   _syncFromConfig() {
     const flat = this._flatten(this._config);
     this._forms.forEach((form) => (form.data = flat));
     this._updateColorSection();
-    if (this._widgetBlocks) {
-      Object.entries(this._widgetBlocks).forEach(([key, block]) => {
-        block.pre.textContent =
-          this._widgetSnippetText(key) || "Bitte zuerst den Sensor zuweisen.";
-      });
-    }
   }
 
   _emit() {

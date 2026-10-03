@@ -9,10 +9,15 @@
  * gegliedert (Sensoren / Darstellung / Kategorien / Farben), ebenfalls wie
  * bei den anderen Integrationen.
  *
+ * Seit 0.0.7 gibt es zusätzlich den Tab "Senden": Schnellversand einer
+ * Nachricht an ein Empfänger-Profil (Smartphone/E-Mail) mit Dringlichkeit.
+ * Die Profile werden zentral in der Integration verwaltet (Konfigurieren).
+ *
  * Erwartete Sensoren (siehe custom_components/notification_center/sensor.py):
  *   state              -> Anzahl offener Einträge
  *   attributes.items   -> Liste der Einzeleinträge
  *   attributes.summary -> ein fertiger Kurztext (fürs Android-Widget)
+ * Der Profil-Sensor (entities.recipients) liefert die Empfänger-Profile.
  */
 
 const DEFAULT_TITLE = "Notification Center";
@@ -39,6 +44,33 @@ const CATEGORY_DEFS = [
     icon: "mdi:wrench-outline",
     colorKey: "color_repair",
     colorFallback: "var(--error-color, #e53935)",
+  },
+];
+
+// Der Senden-Tab ist KEINE Listen-Kategorie (kein Zähler, keine Widgets) und
+// steht deshalb bewusst nicht in CATEGORY_DEFS - sonst würden Editor-Widgets
+// und Listenlogik ihn mitbehandeln.
+const SEND_DEF = {
+  key: "send",
+  label: "Senden",
+  icon: "mdi:send-outline",
+  colorKey: "color_send",
+  colorFallback: "var(--primary-color, #03a9f4)",
+};
+
+const URGENCY_DEFS = [
+  { id: "normal", label: "Normal", icon: "mdi:bell-outline", hint: "" },
+  {
+    id: "high",
+    label: "Hoch",
+    icon: "mdi:bell-alert-outline",
+    hint: "Sofortige Zustellung, bricht Fokus-Modi (iOS) durch.",
+  },
+  {
+    id: "critical",
+    label: "Dringend",
+    icon: "mdi:alarm-light-outline",
+    hint: "Umgeht den Lautlos-Modus (Android: Alarm-Kanal, iOS: Critical Alert).",
   },
 ];
 
@@ -122,10 +154,12 @@ class NotificationCenterCard extends HTMLElement {
       show_notifications: true,
       show_updates: true,
       show_repairs: true,
+      show_send: true,
       entities: {
         notifications: "sensor.notification_center_benachrichtigungen",
         updates: "sensor.notification_center_updates",
         repairs: "sensor.notification_center_reparaturen",
+        recipients: "sensor.notification_center_profile",
       },
     };
   }
@@ -137,6 +171,22 @@ class NotificationCenterCard extends HTMLElement {
     this._search = "";
     this._activeFilter = { notifications: "all", updates: "all", repairs: "all" };
     this._detailItem = null;
+    this._send = {
+      recipient: "",
+      title: "",
+      message: "",
+      urgency: "normal",
+      busy: false,
+      status: null,
+    };
+    this._statusTimer = null;
+  }
+
+  disconnectedCallback() {
+    if (this._statusTimer) {
+      clearTimeout(this._statusTimer);
+      this._statusTimer = null;
+    }
   }
 
   setConfig(config) {
@@ -155,7 +205,17 @@ class NotificationCenterCard extends HTMLElement {
       this._updateList();
       return;
     }
+    // Gleiches gilt fürs Senden-Formular: Während getippt wird, bleibt das
+    // Formular unangetastet (Tab-Zähler aktualisieren sich danach wieder).
+    if (this._isSendFieldFocused()) return;
     this._render();
+  }
+
+  _isSendFieldFocused() {
+    const root = this.shadowRoot;
+    const active = root && root.activeElement;
+    const role = active && active.getAttribute && active.getAttribute("data-role");
+    return !!(role && role.startsWith("send-"));
   }
 
   _isSearchFocused() {
@@ -168,12 +228,20 @@ class NotificationCenterCard extends HTMLElement {
     return 5;
   }
 
+  _sendEnabled() {
+    // Der Tab erscheint nur, wenn ein Profil-Sensor zugewiesen ist - bestehende
+    // Karten aus 0.0.6 bleiben dadurch unverändert, bis sie ihn eintragen.
+    return this._config.show_send !== false && !!this._config.entities.recipients;
+  }
+
   _visibleCategories() {
-    return CATEGORY_DEFS.filter((def) => isCategoryVisible(this._config, def));
+    const list = CATEGORY_DEFS.filter((def) => isCategoryVisible(this._config, def));
+    if (this._sendEnabled()) list.push(SEND_DEF);
+    return list;
   }
 
   _entityIdFor(key) {
-    return this._config.entities[key];
+    return key === "send" ? this._config.entities.recipients : this._config.entities[key];
   }
 
   _stateFor(key) {
@@ -273,7 +341,7 @@ class NotificationCenterCard extends HTMLElement {
 
     const tabsHtml = visibleCategories
       .map((def) => {
-        const count = this._itemsFor(def.key).length;
+        const count = def.key === "send" ? 0 : this._itemsFor(def.key).length;
         const active = this._activeTab === def.key ? "active" : "";
         const color = this._colorFor(def);
         return `
@@ -286,12 +354,12 @@ class NotificationCenterCard extends HTMLElement {
       .join("");
 
     const activeDef = visibleCategories.find((d) => d.key === this._activeTab);
-    const allItems = this._itemsFor(this._activeTab);
+    const isSend = this._activeTab === "send";
+    const allItems = isSend ? [] : this._itemsFor(this._activeTab);
     const filters = FILTER_DEFS[this._activeTab] || [];
     const activeFilterId = this._activeFilter[this._activeTab] || "all";
-    const activeFilterDef = filters.find((f) => f.id === activeFilterId) || filters[0];
 
-    const showSearch = this._config.show_search !== false;
+    const showSearch = !isSend && this._config.show_search !== false;
     const showDismissAll = this._activeTab === "notifications" && allItems.length > 0;
 
     const toolbarHtml =
@@ -325,7 +393,7 @@ class NotificationCenterCard extends HTMLElement {
           </div>`
         : "";
 
-    const listHtml = this._listHtml(activeDef);
+    const listHtml = isSend ? this._sendHtml() : this._listHtml(activeDef);
 
     this.shadowRoot.innerHTML = `
       <style>${this._css()}</style>
@@ -334,9 +402,9 @@ class NotificationCenterCard extends HTMLElement {
         <div class="tabs">${tabsHtml}</div>
         ${toolbarHtml}
         ${filterChipsHtml}
-        <div class="list">${listHtml}</div>
+        <div class="list ${isSend ? "send" : ""}">${listHtml}</div>
       </ha-card>
-      ${this._detailItem ? this._renderPopup(activeDef, this._detailItem) : ""}
+      ${this._detailItem && !isSend ? this._renderPopup(activeDef, this._detailItem) : ""}
     `;
 
     this._attachListeners();
@@ -487,6 +555,7 @@ class NotificationCenterCard extends HTMLElement {
 
     this._attachRowListeners();
     this._attachPopupListeners();
+    this._attachSendListeners();
   }
 
   _attachRowListeners() {
@@ -557,8 +626,180 @@ class NotificationCenterCard extends HTMLElement {
     }
   }
 
+  _sendHtml() {
+    const recipients = this._itemsFor("send");
+    if (!recipients.length) {
+      return `<div class="empty">
+          <ha-icon icon="mdi:account-off-outline" style="color:var(--secondary-text-color)"></ha-icon>
+          <span>Noch keine Empfänger-Profile angelegt</span>
+          <span class="send-hint">Einstellungen → Geräte &amp; Dienste → Notification Center → Konfigurieren</span>
+        </div>`;
+    }
+    const send = this._send;
+    if (!recipients.some((r) => r.id === send.recipient)) send.recipient = recipients[0].id;
+
+    const recipientChips = recipients
+      .map(
+        (r) => `<button class="chip ${r.id === send.recipient ? "active" : ""}" data-send-recipient="${escapeHtml(r.id)}">
+          <ha-icon icon="${r.type === "email" ? "mdi:email-outline" : "mdi:cellphone"}"></ha-icon>
+          <span>${escapeHtml(r.title)}</span>
+        </button>`
+      )
+      .join("");
+
+    const urgencyChips = URGENCY_DEFS.map(
+      (u) => `<button class="chip ${u.id === send.urgency ? "active" : ""}" data-send-urgency="${u.id}">
+          <ha-icon icon="${u.icon}"></ha-icon><span>${u.label}</span>
+        </button>`
+    ).join("");
+    const urgencyHint = (URGENCY_DEFS.find((u) => u.id === send.urgency) || {}).hint || "";
+
+    const status = send.status
+      ? `<div class="send-status ${send.status.kind}">${escapeHtml(send.status.text)}</div>`
+      : "";
+    const canSend = !send.busy && send.message.trim().length > 0;
+
+    return `
+      <div class="send-label">Empfänger</div>
+      <div class="send-chips">${recipientChips}</div>
+      <div class="send-label">Titel (optional)</div>
+      <input class="send-input" type="text" data-role="send-title" autocomplete="off" value="${escapeHtml(send.title)}" />
+      <div class="send-label">Nachricht</div>
+      <textarea class="send-input" rows="3" data-role="send-message">${escapeHtml(send.message)}</textarea>
+      <div class="send-label">Dringlichkeit</div>
+      <div class="send-chips">${urgencyChips}</div>
+      ${urgencyHint ? `<div class="send-hint">${escapeHtml(urgencyHint)}</div>` : ""}
+      <div class="send-actions">
+        ${status}
+        <button class="popup-primary" data-send-submit ${canSend ? "" : "disabled"}>
+          <ha-icon icon="mdi:send"></ha-icon><span>Senden</span>
+        </button>
+      </div>`;
+  }
+
+  _attachSendListeners() {
+    const root = this.shadowRoot;
+    root.querySelectorAll("[data-send-recipient]").forEach((el) => {
+      el.addEventListener("click", () => {
+        this._send.recipient = el.getAttribute("data-send-recipient");
+        this._render();
+      });
+    });
+    root.querySelectorAll("[data-send-urgency]").forEach((el) => {
+      el.addEventListener("click", () => {
+        this._send.urgency = el.getAttribute("data-send-urgency");
+        this._render();
+      });
+    });
+
+    const title = root.querySelector('[data-role="send-title"]');
+    if (title) {
+      stopKeyPropagation(title);
+      title.addEventListener("input", (ev) => {
+        this._send.title = ev.target.value;
+      });
+    }
+    const message = root.querySelector('[data-role="send-message"]');
+    if (message) {
+      stopKeyPropagation(message);
+      message.addEventListener("input", (ev) => {
+        this._send.message = ev.target.value;
+        this._syncSendButton();
+      });
+    }
+    const submit = root.querySelector("[data-send-submit]");
+    if (submit) submit.addEventListener("click", () => this._submitSend());
+  }
+
+  // Nur den Button nachziehen - das Textfeld darf beim Tippen nicht neu
+  // aufgebaut werden.
+  _syncSendButton() {
+    const btn = this.shadowRoot.querySelector("[data-send-submit]");
+    if (!btn) return;
+    const canSend = !this._send.busy && this._send.message.trim().length > 0;
+    if (canSend) btn.removeAttribute("disabled");
+    else btn.setAttribute("disabled", "");
+  }
+
+  _setSendStatus(kind, text, autoClearMs) {
+    this._send.status = text ? { kind, text } : null;
+    if (this._statusTimer) clearTimeout(this._statusTimer);
+    this._statusTimer = null;
+    if (autoClearMs) {
+      this._statusTimer = setTimeout(() => {
+        this._send.status = null;
+        this._statusTimer = null;
+        if (!this._isSendFieldFocused()) this._render();
+      }, autoClearMs);
+    }
+  }
+
+  _submitSend() {
+    const send = this._send;
+    const message = send.message.trim();
+    if (!this._hass || send.busy || !send.recipient || !message) return;
+
+    send.busy = true;
+    this._setSendStatus("info", "Wird gesendet …");
+    this._render();
+
+    const data = { recipient: send.recipient, message, urgency: send.urgency };
+    if (send.title.trim()) data.title = send.title.trim();
+
+    Promise.resolve(this._hass.callService("notification_center", "send", data))
+      .then(() => {
+        send.busy = false;
+        send.title = "";
+        send.message = "";
+        this._setSendStatus("ok", "Gesendet ✓", 4000);
+        this._render();
+      })
+      .catch((err) => {
+        send.busy = false;
+        const reason = (err && err.message) || String(err);
+        this._setSendStatus("error", `Fehler: ${reason}`);
+        this._render();
+      });
+  }
+
   _css() {
     return `
+      .send { display: flex; flex-direction: column; gap: 6px; padding: 4px 16px 12px; }
+      .send-label {
+        font-size: 0.78rem;
+        color: var(--secondary-text-color);
+        margin-top: 6px;
+      }
+      .send-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .send .chip { display: inline-flex; align-items: center; gap: 4px; }
+      .send .chip ha-icon { --mdc-icon-size: 16px; }
+      .send-input {
+        font: inherit;
+        color: var(--primary-text-color);
+        background: var(--secondary-background-color, rgba(0,0,0,0.04));
+        border: 1px solid var(--divider-color, #e0e0e0);
+        border-radius: 8px;
+        padding: 8px 10px;
+        outline: none;
+        resize: vertical;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .send-input:focus { border-color: var(--primary-color); }
+      .send-hint { font-size: 0.78rem; color: var(--secondary-text-color); }
+      .send-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 8px;
+      }
+      .send-actions .popup-primary { display: inline-flex; align-items: center; gap: 6px; }
+      .send-actions ha-icon { --mdc-icon-size: 18px; }
+      .send-status { flex: 1; font-size: 0.85rem; }
+      .send-status.ok { color: var(--success-color, #43a047); }
+      .send-status.error { color: var(--error-color, #e53935); }
+      .send-status.info { color: var(--secondary-text-color); }
       ha-card { padding: 8px 0 4px; }
       .header {
         display: flex;
@@ -790,6 +1031,7 @@ const COLOR_EDITOR_FIELDS = [
   { key: "color_notification", label: "Benachrichtigungen", fallbackHex: "#0288d1" },
   { key: "color_update", label: "Updates", fallbackHex: "#fb8c00" },
   { key: "color_repair", label: "Reparaturen", fallbackHex: "#e53935" },
+  { key: "color_send", label: "Senden", fallbackHex: "#03a9f4" },
 ];
 
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})$/;
@@ -1013,6 +1255,7 @@ class NotificationCenterCardEditor extends HTMLElement {
         { name: "show_notifications", selector: { boolean: {} } },
         { name: "show_updates", selector: { boolean: {} } },
         { name: "show_repairs", selector: { boolean: {} } },
+        { name: "show_send", selector: { boolean: {} } },
       ])
     );
     list.appendChild(categories.details);
@@ -1118,6 +1361,7 @@ class NotificationCenterCardEditor extends HTMLElement {
         { name: "entity_notifications", selector: { entity: { domain: "sensor" } } },
         { name: "entity_updates", selector: { entity: { domain: "sensor" } } },
         { name: "entity_repairs", selector: { entity: { domain: "sensor" } } },
+        { name: "entity_recipients", selector: { entity: { domain: "sensor" } } },
       ])
     );
 
@@ -1322,10 +1566,12 @@ class NotificationCenterCardEditor extends HTMLElement {
       entity_notifications: "Sensor: Benachrichtigungen",
       entity_updates: "Sensor: Updates",
       entity_repairs: "Sensor: Reparaturen",
+      entity_recipients: "Sensor: Profile (Senden-Tab)",
       show_search: "Suchfeld anzeigen",
       show_notifications: "Kategorie „Benachrichtigungen“ anzeigen",
       show_updates: "Kategorie „Updates“ anzeigen",
       show_repairs: "Kategorie „Reparaturen“ anzeigen",
+      show_send: "Tab „Senden“ anzeigen",
     };
     return labels[name] || name;
   }
@@ -1339,10 +1585,12 @@ class NotificationCenterCardEditor extends HTMLElement {
       entity_notifications: entities.notifications || "",
       entity_updates: entities.updates || "",
       entity_repairs: entities.repairs || "",
+      entity_recipients: entities.recipients || "",
       show_search: config.show_search !== false,
       show_notifications: config.show_notifications !== false,
       show_updates: config.show_updates !== false,
       show_repairs: config.show_repairs !== false,
+      show_send: config.show_send !== false,
     };
   }
 
@@ -1357,10 +1605,12 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_notifications: flat.show_notifications,
       show_updates: flat.show_updates,
       show_repairs: flat.show_repairs,
+      show_send: flat.show_send,
       entities: {
         notifications: flat.entity_notifications,
         updates: flat.entity_updates,
         repairs: flat.entity_repairs,
+        recipients: flat.entity_recipients,
       },
     };
   }
@@ -1374,5 +1624,5 @@ window.customCards.push({
   type: "notification-center-card",
   name: "Notification Center",
   description:
-    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien.",
+    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien - plus Schnellversand an Empfänger-Profile.",
 });

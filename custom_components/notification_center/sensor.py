@@ -34,7 +34,15 @@ from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SENSOR_NOTIFICATIONS, SENSOR_REPAIRS, SENSOR_UPDATES
+from .const import (
+    CONF_RECIPIENTS,
+    DOMAIN,
+    RECIPIENT_EMAIL,
+    SENSOR_NOTIFICATIONS,
+    SENSOR_PROFILES,
+    SENSOR_REPAIRS,
+    SENSOR_UPDATES,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +62,7 @@ async def async_setup_entry(
             NotificationsSensor(entry),
             UpdatesSensor(entry),
             RepairsSensor(entry),
+            ProfilesSensor(entry),
         ]
     )
 
@@ -238,3 +247,35 @@ class RepairsSensor(_BaseSummarySensor):
                 }
             )
         self._items = items
+
+
+class ProfilesSensor(_BaseSummarySensor):
+    """Empfänger-Profile (Optionen des Config Entries) für den Senden-Tab.
+
+    Die Profile ändern sich nur über den Options-Flow; dabei wird die
+    Integration neu geladen, ein Listener ist daher nicht nötig.
+    """
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        super().__init__(entry, SENSOR_PROFILES, "Profile", "mdi:account-box-outline")
+
+    async def async_added_to_hass(self) -> None:
+        self._async_refresh()
+
+    @callback
+    def _async_refresh(self) -> None:
+        self._items = [
+            {
+                "id": recipient["id"],
+                "title": recipient["name"],
+                "message": "E-Mail" if recipient["type"] == RECIPIENT_EMAIL else "Smartphone",
+                "type": recipient["type"],
+                "target": recipient["target"],
+            }
+            for recipient in self._entry.options.get(CONF_RECIPIENTS, [])
+        ]
+
+    def _build_summary(self) -> str:
+        if not self._items:
+            return "Keine Profile angelegt"
+        return ", ".join(item["title"] for item in self._items)

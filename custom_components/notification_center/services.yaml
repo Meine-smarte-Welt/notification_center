@@ -1,0 +1,28 @@
+send:
+  fields:
+    recipient:
+      required: true
+      example: "Thorsten Handy"
+      selector:
+        text:
+    message:
+      required: true
+      example: "Die Waschmaschine ist fertig."
+      selector:
+        text:
+          multiline: true
+    title:
+      required: false
+      example: "Waschmaschine"
+      selector:
+        text:
+    urgency:
+      required: false
+      default: normal
+      selector:
+        select:
+          translation_key: urgency
+          options:
+            - normal
+            - high
+            - critical

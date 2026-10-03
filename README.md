@@ -15,6 +15,9 @@ Bedienung angelehnt an die Schwester-Integrationen *FRITZ!Box Anrufe* und
 ## Was die Integration kann
 
 - Drei zusammenfassende Sensoren: Benachrichtigungen, Updates, Reparaturen
+- **Neu in 0.0.7:** Tab **Senden** für den Schnellversand von Nachrichten an
+  zentral verwaltete **Empfänger-Profile** (Smartphone oder E-Mail), mit
+  Dringlichkeit bis hin zum Umgehen des Lautlos-Modus
 - Jeder Sensor zählt seine Kategorie als Zustand und trägt die Einzeleinträge
   im Attribut `items`
 - Ein Attribut `summary` pro Sensor - ein fertiger Kurztext, gedacht für ein
@@ -60,15 +63,61 @@ show_search: true
 show_notifications: true
 show_updates: true
 show_repairs: true
+show_send: true
 entities:
   notifications: sensor.notification_center_benachrichtigungen
   updates: sensor.notification_center_updates
   repairs: sensor.notification_center_reparaturen
+  recipients: sensor.notification_center_profile   # Profil-Sensor für den Senden-Tab
 
 # Farben (leer = aktives Theme)
 color_notification: ""
 color_update: ""
 color_repair: ""
+color_send: ""
+```
+
+### Nachrichten senden & Empfänger-Profile
+
+Ab 0.0.7 gibt es neben den drei Listen einen vierten Tab **Senden**. Er
+erscheint, sobald im Editor (Abschnitt *Widgets*) der Sensor
+*Profile (Senden-Tab)* zugewiesen ist, und lässt sich mit `show_send: false`
+wieder ausblenden. Bestehende Karten aus 0.0.6 bleiben unverändert, bis dieser
+Sensor eingetragen wird.
+
+**Profile anlegen:** Einstellungen → Geräte & Dienste → Notification Center →
+**Konfigurieren** → *Profil hinzufügen*. Ein Profil besteht aus
+
+- **Name** (z. B. „Thorsten Handy“),
+- **Art**: Smartphone (Push) oder E-Mail,
+- **Ziel**: ein Dienst der Domain `notify`, z. B. `mobile_app_pixel_9` oder
+  der Name deines E-Mail-Dienstes.
+
+**Smartphone gewechselt?** Unter *Profil bearbeiten* nur das Ziel ändern. Die
+Karte und alle Automationen, die das Profil ansprechen, funktionieren ohne
+weitere Anpassung weiter - die interne ID des Profils bleibt auch bei einer
+Umbenennung stabil.
+
+**Dringlichkeit** (Smartphone-Profile, Companion App):
+
+| Stufe | Wirkung |
+|---|---|
+| Normal | ganz normale Benachrichtigung |
+| Hoch | sofortige Zustellung (Android `priority: high`, `ttl: 0`; iOS *time-sensitive*, durchbricht Fokus-Modi) |
+| Dringend | umgeht den Lautlos-Modus (Android: Alarm-Kanal `alarm_stream`; iOS: Critical Alert - dafür muss kritischer Hinweis-Zugriff in der Companion App erlaubt sein) |
+
+Bei E-Mail-Profilen gibt es kein Gegenstück; die Stufe landet als Präfix im
+Betreff („Wichtig: …“ / „DRINGEND: …“).
+
+**Aus Automationen und Scripts** steht dieselbe Funktion als Service bereit:
+
+```yaml
+action: notification_center.send
+data:
+  recipient: Thorsten Handy     # Name oder ID des Profils
+  title: Waschmaschine          # optional
+  message: Die Wäsche ist fertig.
+  urgency: normal               # normal | high | critical
 ```
 
 ### Kategorien als Tabs
@@ -146,6 +195,26 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.7 – Senden-Tab und Empfänger-Profile
+
+- Neuer Tab **Senden** in der Karte: Profil wählen, optional Titel, Nachricht,
+  Dringlichkeit (Normal / Hoch / Dringend), Senden mit Rückmeldung
+  („Gesendet ✓“ bzw. Fehlermeldung)
+- **Empfänger-Profile** zentral in der Integration (*Konfigurieren*):
+  hinzufügen, bearbeiten, entfernen. Smartphone-Wechsel = eine Änderung am
+  Profil
+- Neuer Service `notification_center.send` (Empfänger, Nachricht, Titel,
+  Dringlichkeit) - nutzbar in Automationen, Scripts und Blueprints
+- Neuer Sensor **Profile** (`sensor.notification_center_profile`) liefert die
+  Profile für die Karte
+- Dringlichkeit „Dringend“ umgeht den Lautlos-Modus (Android Alarm-Kanal,
+  iOS Critical Alert); bei E-Mail als Betreff-Präfix
+- Editor: neuer Schalter *Tab „Senden“ anzeigen*, Sensor-Zuweisung *Profile*
+  und eigene Farbe *Senden*
+- Das Formular bleibt beim Tippen unangetastet, auch wenn Home Assistant
+  zwischendurch Updates schickt
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren
 
 ### 0.0.6 – Trennlinien in den Widgets
 
@@ -298,6 +367,12 @@ Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten
 - Ungetestet gegen eine echte Home-Assistant-Instanz - vor dem produktiven
   Einsatz bitte einmal gegenprüfen, insbesondere die persistent_notification-
   Anbindung.
+- Der Schnellversand ist bisher nur mit simulierten Aufrufen geprüft. Ob
+  „Dringend“ auf dem eigenen Gerät wirklich den Lautlos-Modus umgeht, hängt von
+  Android-/iOS-Einstellungen ab (Kanal-Berechtigungen, Nicht stören, kritische
+  Hinweise) und sollte einmal mit dem eigenen Smartphone ausprobiert werden.
+- Blueprints und das Erstellen von Benachrichtigungs-Scripts direkt aus der
+  Karte sind noch nicht enthalten (geplant für spätere Versionen).
 
 ## Icon
 

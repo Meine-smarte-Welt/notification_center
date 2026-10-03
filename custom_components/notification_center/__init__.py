@@ -11,20 +11,43 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import voluptuous as vol
+
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import config_validation as cv
 
 try:
     from homeassistant.components.lovelace.const import LOVELACE_DATA
 except ImportError:  # pragma: no cover - sehr alte/neue HA-Versionen
     LOVELACE_DATA = "lovelace"
 
-from .const import CARD_FILENAME, CARD_URL_PATH, CARD_VERSION, DOMAIN
+from .const import (
+    CARD_FILENAME,
+    CARD_URL_PATH,
+    CARD_VERSION,
+    CONF_RECIPIENTS,
+    DOMAIN,
+    SERVICE_SEND,
+    URGENCIES,
+    URGENCY_NORMAL,
+)
+from .notify import build_payload
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor"]
+
+SEND_SCHEMA = vol.Schema(
+    {
+        vol.Required("recipient"): cv.string,
+        vol.Required("message"): cv.string,
+        vol.Optional("title"): cv.string,
+        vol.Optional("urgency", default=URGENCY_NORMAL): vol.In(URGENCIES),
+    }
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -32,9 +55,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {}
 
     await _async_register_card(hass)
+    _async_register_services(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Änderungen an den Empfänger-Profilen (Optionen) -> Integration neu laden,
+    # damit das Profil-Sensor-Attribut und die Karte sofort aktuell sind.
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
+
+
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Optionen (Empfänger-Profile) wurden geändert."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -42,7 +75,49 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
+        hass.services.async_remove(DOMAIN, SERVICE_SEND)
     return unload_ok
+
+
+def _async_register_services(hass: HomeAssistant) -> None:
+    """Service ``notification_center.send`` (Schnellversand) registrieren."""
+    if hass.services.has_service(DOMAIN, SERVICE_SEND):
+        return
+
+    async def _async_handle_send(call: ServiceCall) -> None:
+        entries = hass.config_entries.async_entries(DOMAIN)
+        recipients = entries[0].options.get(CONF_RECIPIENTS, []) if entries else []
+
+        wanted = call.data["recipient"].strip().casefold()
+        match = next(
+            (
+                r
+                for r in recipients
+                if wanted in (r["id"].casefold(), r["name"].casefold())
+            ),
+            None,
+        )
+        if match is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_recipient",
+                translation_placeholders={"recipient": call.data["recipient"]},
+            )
+
+        payload = build_payload(
+            match["type"],
+            call.data.get("title"),
+            call.data["message"],
+            call.data["urgency"],
+        )
+        # Ziel ist immer ein Dienst der notify-Domain (siehe Options-Flow).
+        await hass.services.async_call(
+            "notify", match["target"], payload, blocking=True
+        )
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_SEND, _async_handle_send, schema=SEND_SCHEMA
+    )
 
 
 async def _async_register_card(hass: HomeAssistant) -> None:

@@ -3,11 +3,105 @@
     "step": {
       "user": {
         "title": "Notification Center einrichten",
-        "description": "Legt drei Sensoren an: Benachrichtigungen, Updates und Reparaturen. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden."
+        "description": "Legt vier Sensoren an: Benachrichtigungen, Updates, Reparaturen und Profile. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden. Empfänger-Profile für den Senden-Tab legst du danach unter „Konfigurieren“ an."
       }
     },
     "abort": {
       "single_instance_allowed": "Es kann nur eine Instanz eingerichtet werden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Empfänger-Profile",
+        "description": "Ein Profil bündelt Name und Benachrichtigungsziel. Wechselst du das Smartphone, änderst du nur das Ziel des Profils - Karte und Automationen bleiben unverändert.",
+        "menu_options": {
+          "add_recipient": "Profil hinzufügen",
+          "edit_recipient": "Profil bearbeiten",
+          "remove_recipient": "Profile entfernen"
+        }
+      },
+      "add_recipient": {
+        "title": "Profil hinzufügen",
+        "description": "Das Ziel ist ein Dienst der Domain „notify“, z. B. mobile_app_pixel_9 (Smartphone) oder der Name deines E-Mail-Dienstes.",
+        "data": {
+          "name": "Name",
+          "type": "Art",
+          "target": "Ziel (notify-Dienst)"
+        }
+      },
+      "edit_recipient": {
+        "title": "Profil bearbeiten",
+        "data": {
+          "recipient": "Profil"
+        }
+      },
+      "edit_recipient_form": {
+        "title": "Profil „{name}“ bearbeiten",
+        "data": {
+          "name": "Name",
+          "type": "Art",
+          "target": "Ziel (notify-Dienst)"
+        }
+      },
+      "remove_recipient": {
+        "title": "Profile entfernen",
+        "data": {
+          "recipients": "Profile"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Bitte einen Namen eingeben.",
+      "name_exists": "Ein Profil mit diesem Namen gibt es bereits.",
+      "target_required": "Bitte ein Ziel angeben."
+    },
+    "abort": {
+      "unknown_recipient": "Dieses Profil gibt es nicht mehr."
+    }
+  },
+  "selector": {
+    "recipient_type": {
+      "options": {
+        "push": "Smartphone (Push)",
+        "email": "E-Mail"
+      }
+    },
+    "urgency": {
+      "options": {
+        "normal": "Normal",
+        "high": "Hoch",
+        "critical": "Dringend (umgeht Lautlos-Modus)"
+      }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Nachricht senden",
+      "description": "Sendet eine Nachricht an ein Empfänger-Profil. Smartphone-Wechsel brauchen nur eine Änderung am Profil.",
+      "fields": {
+        "recipient": {
+          "name": "Empfänger",
+          "description": "Name oder ID eines Empfänger-Profils."
+        },
+        "message": {
+          "name": "Nachricht",
+          "description": "Der Nachrichtentext."
+        },
+        "title": {
+          "name": "Titel",
+          "description": "Optionaler Titel (bei E-Mail der Betreff)."
+        },
+        "urgency": {
+          "name": "Dringlichkeit",
+          "description": "Normal, hoch oder dringend. „Dringend“ umgeht bei Smartphones den Lautlos-Modus."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_recipient": {
+      "message": "Das Empfänger-Profil „{recipient}“ gibt es nicht. Profile legst du unter Einstellungen → Geräte & Dienste → Notification Center → Konfigurieren an."
     }
   }
 }

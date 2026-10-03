@@ -3,11 +3,105 @@
     "step": {
       "user": {
         "title": "Set up Notification Center",
-        "description": "Creates three sensors: notifications, updates and repairs. No credentials are needed, only one instance can be set up."
+        "description": "Creates four sensors: notifications, updates, repairs and profiles. No credentials are needed, only one instance can be set up. Recipient profiles for the Send tab are added afterwards under “Configure”."
       }
     },
     "abort": {
       "single_instance_allowed": "Only one instance is allowed."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Recipient profiles",
+        "description": "A profile bundles a name and a notification target. When you switch phones, only the profile's target changes - cards and automations stay untouched.",
+        "menu_options": {
+          "add_recipient": "Add profile",
+          "edit_recipient": "Edit profile",
+          "remove_recipient": "Remove profiles"
+        }
+      },
+      "add_recipient": {
+        "title": "Add profile",
+        "description": "The target is a service of the “notify” domain, e.g. mobile_app_pixel_9 (phone) or the name of your email service.",
+        "data": {
+          "name": "Name",
+          "type": "Type",
+          "target": "Target (notify service)"
+        }
+      },
+      "edit_recipient": {
+        "title": "Edit profile",
+        "data": {
+          "recipient": "Profile"
+        }
+      },
+      "edit_recipient_form": {
+        "title": "Edit profile “{name}”",
+        "data": {
+          "name": "Name",
+          "type": "Type",
+          "target": "Target (notify service)"
+        }
+      },
+      "remove_recipient": {
+        "title": "Remove profiles",
+        "data": {
+          "recipients": "Profiles"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Please enter a name.",
+      "name_exists": "A profile with this name already exists.",
+      "target_required": "Please enter a target."
+    },
+    "abort": {
+      "unknown_recipient": "This profile no longer exists."
+    }
+  },
+  "selector": {
+    "recipient_type": {
+      "options": {
+        "push": "Phone (push)",
+        "email": "Email"
+      }
+    },
+    "urgency": {
+      "options": {
+        "normal": "Normal",
+        "high": "High",
+        "critical": "Urgent (bypasses silent mode)"
+      }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Send message",
+      "description": "Sends a message to a recipient profile. Switching phones only needs a change to the profile.",
+      "fields": {
+        "recipient": {
+          "name": "Recipient",
+          "description": "Name or ID of a recipient profile."
+        },
+        "message": {
+          "name": "Message",
+          "description": "The message text."
+        },
+        "title": {
+          "name": "Title",
+          "description": "Optional title (email subject)."
+        },
+        "urgency": {
+          "name": "Urgency",
+          "description": "Normal, high or urgent. “Urgent” bypasses silent mode on phones."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_recipient": {
+      "message": "The recipient profile “{recipient}” does not exist. Add profiles under Settings → Devices & services → Notification Center → Configure."
     }
   }
 }

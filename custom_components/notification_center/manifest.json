@@ -3,12 +3,18 @@
   "name": "Notification Center",
   "codeowners": [],
   "config_flow": true,
+  "dependencies": [
+    "websocket_api"
+  ],
   "documentation": "https://github.com/Meine-smarte-Welt/notification_center",
   "issue_tracker": "https://github.com/Meine-smarte-Welt/notification_center/issues",
   "after_dependencies": [
-    "lovelace"
+    "lovelace",
+    "script",
+    "automation",
+    "blueprint"
   ],
   "iot_class": "local_push",
   "requirements": [],
-  "version": "0.0.7"
+  "version": "0.0.8"
 }

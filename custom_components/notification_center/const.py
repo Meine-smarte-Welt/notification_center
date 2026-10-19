@@ -22,4 +22,4 @@ URGENCIES = [URGENCY_NORMAL, URGENCY_HIGH, URGENCY_CRITICAL]
 
 CARD_FILENAME = "notification-center-card.js"
 CARD_URL_PATH = f"/notification_center_files/{CARD_FILENAME}"
-CARD_VERSION = "0.0.7"
+CARD_VERSION = "0.0.8"

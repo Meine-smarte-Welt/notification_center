@@ -18,6 +18,9 @@ Bedienung angelehnt an die Schwester-Integrationen *FRITZ!Box Anrufe* und
 - **Neu in 0.0.7:** Tab **Senden** für den Schnellversand von Nachrichten an
   zentral verwaltete **Empfänger-Profile** (Smartphone oder E-Mail), mit
   Dringlichkeit bis hin zum Umgehen des Lautlos-Modus
+- **Neu in 0.0.8:** Accordion **Scripts & Blueprints** unter der Liste: Scripts,
+  Script-Blueprints und Automations-Blueprints direkt in der Karte
+  zusammenklicken und dauerhaft in Home Assistant anlegen
 - Jeder Sensor zählt seine Kategorie als Zustand und trägt die Einzeleinträge
   im Attribut `items`
 - Ein Attribut `summary` pro Sensor - ein fertiger Kurztext, gedacht für ein
@@ -64,6 +67,7 @@ show_notifications: true
 show_updates: true
 show_repairs: true
 show_send: true
+show_builder: true
 entities:
   notifications: sensor.notification_center_benachrichtigungen
   updates: sensor.notification_center_updates
@@ -119,6 +123,35 @@ data:
   message: Die Wäsche ist fertig.
   urgency: normal               # normal | high | critical
 ```
+
+### Scripts & Blueprints bauen
+
+Unter der Liste steht ein aufklappbares Menü **Scripts & Blueprints** mit drei
+Abschnitten (es ist immer nur einer offen). Alles, was du dort anlegst, bleibt
+dauerhaft in Home Assistant bestehen und ist in anderen Automationen nutzbar.
+Mit `show_builder: false` (oder im Editor, Abschnitt *Darstellung*) lässt sich
+der Bereich ausblenden. Zum Anlegen sind **Administrator-Rechte** nötig.
+
+| Abschnitt | Ergebnis |
+|---|---|
+| **Script erstellen** | Ein Script (`script.<name>`) in der `scripts.yaml`, das per `notification_center.send` eine Nachricht an ein Profil schickt. Optional wird die Nachricht erst beim Aufruf als Feld `message` übergeben (der eingetragene Text dient dann als Rückfall). |
+| **Script-Blueprint erstellen** | Ein Blueprint unter `blueprints/script/notification_center/`. Profil, Titel, Nachricht und Dringlichkeit sind Eingaben mit den Formularwerten als Vorgabe. |
+| **Automations-Blueprint erstellen** | Ein Blueprint unter `blueprints/automation/notification_center/`: Erreicht eine Entität einen Zustand, wird die Nachricht gesendet. Entität und Zustand wählst du erst beim Verwenden. |
+
+**Ablauf:** Name und Profil wählen, Nachricht und Dringlichkeit festlegen,
+*Erstellen* tippen. Die Karte meldet das Ergebnis und bietet direkt einen
+Button zum Öffnen (*Script öffnen* bzw. *Blueprints öffnen*). Blueprints
+erscheinen anschließend unter *Einstellungen → Automationen & Szenen →
+Blueprints*; ein Script aus einem Script-Blueprint legst du dort mit
+*Script erstellen* an.
+
+**Schutz vor Überschreiben:** Existiert ein Script mit derselben ID bereits,
+wird nichts verändert, und du wählst einen anderen Namen. Existiert ein
+Blueprint bereits, bietet die Karte *Überschreiben* an. Scripts, die den
+Blueprint nutzen, werden danach automatisch neu geladen.
+
+> Der Name wird zur ID bzw. zum Dateinamen („Tür offen melden“ →
+> `tur_offen_melden`). Umlaute werden dabei umgeschrieben.
 
 ### Kategorien als Tabs
 
@@ -195,6 +228,24 @@ Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
 Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
 
 ## Versionshistorie
+
+### 0.0.8 – Scripts und Blueprints in der Karte bauen
+
+- Neues Accordion **Scripts & Blueprints** unter der Liste mit den Abschnitten
+  *Script erstellen*, *Script-Blueprint erstellen* und *Automations-Blueprint
+  erstellen*
+- Scripts werden über die reguläre Script-Editor-API angelegt (Validierung und
+  automatisches Neuladen inklusive); bestehende Scripts werden nie
+  überschrieben
+- Blueprints schreibt die Integration über die offizielle Blueprint-Schnittstelle
+  von Home Assistant nach `blueprints/<script|automation>/notification_center/`;
+  vorhandene Blueprints lassen sich bewusst überschreiben
+- Optional: Nachricht beim Script-Aufruf übergeben (Feld `message`)
+- Neue Websocket-Befehle `notification_center/build_script` und
+  `notification_center/create_blueprint` (nur Administratoren)
+- Editor: neuer Schalter *Bereich „Scripts & Blueprints“ anzeigen*
+- Fehlermeldungen zeigen den eigentlichen Grund (z. B. von der Script-Validierung)
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren
 
 ### 0.0.7 – Senden-Tab und Empfänger-Profile
 
@@ -371,8 +422,17 @@ Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten
   „Dringend“ auf dem eigenen Gerät wirklich den Lautlos-Modus umgeht, hängt von
   Android-/iOS-Einstellungen ab (Kanal-Berechtigungen, Nicht stören, kritische
   Hinweise) und sollte einmal mit dem eigenen Smartphone ausprobiert werden.
-- Blueprints und das Erstellen von Benachrichtigungs-Scripts direkt aus der
-  Karte sind noch nicht enthalten (geplant für spätere Versionen).
+- Scripts und Blueprints werden nur **angelegt**. Bearbeiten und Löschen
+  geschieht weiterhin in Home Assistant selbst (Script-Editor bzw.
+  *Blueprints*); eine Liste der bereits erstellten Einträge zeigt die Karte
+  noch nicht.
+- Der Automations-Blueprint hat genau einen Trigger (Zustandswechsel einer
+  Entität). Komplexere Auslöser baust du in Home Assistant und rufst darin
+  `notification_center.send` auf.
+- Home Assistant bietet keine Frontend-Schnittstelle zum Schreiben von
+  Blueprints; die Integration übernimmt das serverseitig. Die erzeugten
+  Dateien wurden gegen die Blueprint-Schemas von Home Assistant 2025.1
+  geprüft, aber noch nicht in einer laufenden Instanz.
 
 ## Icon
 

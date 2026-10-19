@@ -13,6 +13,10 @@
  * Nachricht an ein Empfänger-Profil (Smartphone/E-Mail) mit Dringlichkeit.
  * Die Profile werden zentral in der Integration verwaltet (Konfigurieren).
  *
+ * Seit 0.0.8 gibt es unter der Liste das Accordion "Scripts & Blueprints":
+ * Scripts, Script-Blueprints und Automations-Blueprints lassen sich direkt in
+ * der Karte zusammenklicken und werden dauerhaft in Home Assistant angelegt.
+ *
  * Erwartete Sensoren (siehe custom_components/notification_center/sensor.py):
  *   state              -> Anzahl offener Einträge
  *   attributes.items   -> Liste der Einzeleinträge
@@ -74,6 +78,51 @@ const URGENCY_DEFS = [
   },
 ];
 
+// Abschnitte des Accordions "Scripts & Blueprints" (nur einer ist gleichzeitig
+// offen). Die Texte beschreiben kurz, was am Ende entsteht.
+const BUILDER_SECTIONS = [
+  {
+    key: "script",
+    label: "Script erstellen",
+    icon: "mdi:script-text-outline",
+    description:
+      "Legt ein dauerhaftes Script an, das eine Nachricht an ein Profil sendet. Es lässt sich in jeder Automation wiederverwenden.",
+    submit: "Script erstellen",
+  },
+  {
+    key: "bp_script",
+    label: "Script-Blueprint erstellen",
+    icon: "mdi:file-document-outline",
+    description:
+      "Vorlage für Scripts: Profil, Titel, Nachricht und Dringlichkeit sind Vorgaben, die du beim Anlegen eines Scripts aus dem Blueprint änderst.",
+    submit: "Blueprint speichern",
+    blueprintKind: "script",
+  },
+  {
+    key: "bp_automation",
+    label: "Automations-Blueprint erstellen",
+    icon: "mdi:robot-outline",
+    description:
+      "Vorlage für Automationen: Erreicht eine Entität einen Zustand, wird die Nachricht gesendet. Entität und Zustand wählst du erst beim Verwenden.",
+    submit: "Blueprint speichern",
+    blueprintKind: "automation",
+  },
+];
+
+function newBuilderForm() {
+  return {
+    name: "",
+    description: "",
+    recipient: "",
+    title: "",
+    message: "",
+    urgency: "normal",
+    message_at_call: false,
+    busy: false,
+    status: null,
+  };
+}
+
 const FILTER_DEFS = {
   notifications: [{ id: "all", label: "Alle", test: () => true }],
   updates: [
@@ -116,6 +165,26 @@ function formatTimeAgo(isoString) {
   return `Vor ${diffDays} Tag${diffDays === 1 ? "" : "en"}`;
 }
 
+// Fehlertext aus den verschiedenen Formen, in denen Home Assistant Fehler
+// liefert: Websocket ({code, message}), REST ({error, status_code, body} - der
+// eigentliche Grund steckt bei einem 400 in body.message) oder ein Error.
+function errorText(err) {
+  if (!err) return "Unbekannter Fehler";
+  if (typeof err === "string") return err;
+  if (err.message) return err.message;
+  const body = err.body;
+  if (body) {
+    if (typeof body === "string") return body;
+    if (body.message) return body.message;
+  }
+  if (err.error) return err.error;
+  try {
+    return JSON.stringify(err);
+  } catch (e) {
+    return String(err);
+  }
+}
+
 function navigate(path) {
   history.pushState(null, "", path);
   window.dispatchEvent(new Event("location-changed", { bubbles: true, composed: true }));
@@ -155,6 +224,7 @@ class NotificationCenterCard extends HTMLElement {
       show_updates: true,
       show_repairs: true,
       show_send: true,
+      show_builder: true,
       entities: {
         notifications: "sensor.notification_center_benachrichtigungen",
         updates: "sensor.notification_center_updates",
@@ -180,6 +250,15 @@ class NotificationCenterCard extends HTMLElement {
       status: null,
     };
     this._statusTimer = null;
+    this._builder = {
+      open: false,
+      section: null,
+      forms: {
+        script: newBuilderForm(),
+        bp_script: newBuilderForm(),
+        bp_automation: newBuilderForm(),
+      },
+    };
   }
 
   disconnectedCallback() {
@@ -205,17 +284,17 @@ class NotificationCenterCard extends HTMLElement {
       this._updateList();
       return;
     }
-    // Gleiches gilt fürs Senden-Formular: Während getippt wird, bleibt das
-    // Formular unangetastet (Tab-Zähler aktualisieren sich danach wieder).
-    if (this._isSendFieldFocused()) return;
+    // Gleiches gilt fürs Senden-Formular und die Builder-Formulare: Während
+    // getippt wird, bleiben sie unangetastet (Zähler ziehen danach nach).
+    if (this._isFormFieldFocused()) return;
     this._render();
   }
 
-  _isSendFieldFocused() {
+  _isFormFieldFocused() {
     const root = this.shadowRoot;
     const active = root && root.activeElement;
     const role = active && active.getAttribute && active.getAttribute("data-role");
-    return !!(role && role.startsWith("send-"));
+    return !!(role && (role.startsWith("send-") || role.startsWith("build-")));
   }
 
   _isSearchFocused() {
@@ -403,6 +482,7 @@ class NotificationCenterCard extends HTMLElement {
         ${toolbarHtml}
         ${filterChipsHtml}
         <div class="list ${isSend ? "send" : ""}">${listHtml}</div>
+        ${this._builderEnabled() ? this._builderHtml() : ""}
       </ha-card>
       ${this._detailItem && !isSend ? this._renderPopup(activeDef, this._detailItem) : ""}
     `;
@@ -556,6 +636,7 @@ class NotificationCenterCard extends HTMLElement {
     this._attachRowListeners();
     this._attachPopupListeners();
     this._attachSendListeners();
+    this._attachBuilderListeners();
   }
 
   _attachRowListeners() {
@@ -729,7 +810,7 @@ class NotificationCenterCard extends HTMLElement {
       this._statusTimer = setTimeout(() => {
         this._send.status = null;
         this._statusTimer = null;
-        if (!this._isSendFieldFocused()) this._render();
+        if (!this._isFormFieldFocused()) this._render();
       }, autoClearMs);
     }
   }
@@ -762,8 +843,319 @@ class NotificationCenterCard extends HTMLElement {
       });
   }
 
+  // ---------------------------------------------------------------------
+  // Accordion "Scripts & Blueprints" (0.0.8)
+  // ---------------------------------------------------------------------
+
+  _builderEnabled() {
+    return this._config.show_builder !== false;
+  }
+
+  _builderHtml() {
+    const b = this._builder;
+    const bodyHtml = b.open
+      ? `<div class="acc-body">${BUILDER_SECTIONS.map((sec) => this._builderSectionHtml(sec)).join("")}</div>`
+      : "";
+    return `
+      <div class="builder">
+        <button class="acc-head main" data-builder-toggle aria-expanded="${b.open}">
+          <ha-icon icon="mdi:hammer-wrench"></ha-icon>
+          <span>Scripts &amp; Blueprints</span>
+          <ha-icon class="chev ${b.open ? "open" : ""}" icon="mdi:chevron-down"></ha-icon>
+        </button>
+        ${bodyHtml}
+      </div>`;
+  }
+
+  _builderSectionHtml(sec) {
+    const open = this._builder.section === sec.key;
+    return `
+      <div class="acc-item">
+        <button class="acc-head" data-builder-section="${sec.key}" aria-expanded="${open}">
+          <ha-icon icon="${sec.icon}"></ha-icon>
+          <span>${sec.label}</span>
+          <ha-icon class="chev ${open ? "open" : ""}" icon="mdi:chevron-down"></ha-icon>
+        </button>
+        ${open ? `<div class="acc-panel">${this._builderFormHtml(sec)}</div>` : ""}
+      </div>`;
+  }
+
+  _builderFormHtml(sec) {
+    const f = this._builder.forms[sec.key];
+    const k = sec.key;
+    const isScript = k === "script";
+    const isBlueprint = !!sec.blueprintKind;
+    const recipients = this._itemsFor("send");
+
+    if (recipients.length && !recipients.some((r) => r.title === f.recipient)) {
+      f.recipient = recipients[0].title;
+    }
+
+    const recipientHtml = recipients.length
+      ? `<div class="send-chips">${recipients
+          .map(
+            (r) => `<button class="chip ${r.title === f.recipient ? "active" : ""}" data-build-recipient="${escapeHtml(r.title)}" data-bf="${k}">
+              <ha-icon icon="${r.type === "email" ? "mdi:email-outline" : "mdi:cellphone"}"></ha-icon>
+              <span>${escapeHtml(r.title)}</span>
+            </button>`
+          )
+          .join("")}</div>`
+      : `<input class="send-input" type="text" data-role="build-recipient-${k}" data-bf="${k}" data-field="recipient" autocomplete="off" placeholder="Name des Profils" value="${escapeHtml(f.recipient)}" />
+         <div class="send-hint">Tipp: Weise der Karte den Profil-Sensor zu, dann kannst du Profile hier antippen.</div>`;
+
+    const urgencyHtml = URGENCY_DEFS.map(
+      (u) => `<button class="chip ${u.id === f.urgency ? "active" : ""}" data-build-urgency="${u.id}" data-bf="${k}">
+          <ha-icon icon="${u.icon}"></ha-icon><span>${u.label}</span>
+        </button>`
+    ).join("");
+    const urgencyHint = (URGENCY_DEFS.find((u) => u.id === f.urgency) || {}).hint || "";
+
+    const field = (label, name, opts = {}) => `
+      <div class="send-label">${label}</div>
+      ${
+        opts.multiline
+          ? `<textarea class="send-input" rows="3" data-role="build-${name}-${k}" data-bf="${k}" data-field="${name}">${escapeHtml(f[name])}</textarea>`
+          : `<input class="send-input" type="text" data-role="build-${name}-${k}" data-bf="${k}" data-field="${name}" autocomplete="off" placeholder="${escapeHtml(opts.placeholder || "")}" value="${escapeHtml(f[name])}" />`
+      }`;
+
+    const messageAtCall = isScript
+      ? `<label class="build-check">
+           <input type="checkbox" data-build-check="message_at_call" data-bf="${k}" ${f.message_at_call ? "checked" : ""} />
+           <span>Nachricht erst beim Aufruf übergeben (der Text oben ist dann nur der Rückfall)</span>
+         </label>`
+      : "";
+
+    const status = f.status
+      ? `<div class="send-status ${f.status.kind}">${escapeHtml(f.status.text)}</div>`
+      : "";
+    const extraButtons = [];
+    if (f.status && f.status.code === "file_exists") {
+      extraButtons.push(`<button class="popup-secondary" data-build-overwrite data-bf="${k}">Überschreiben</button>`);
+    }
+    if (f.status && f.status.kind === "ok" && f.status.open) {
+      extraButtons.push(
+        `<button class="popup-secondary" data-build-open="${escapeHtml(f.status.open)}">${escapeHtml(f.status.openLabel || "Öffnen")}</button>`
+      );
+    }
+
+    return `
+      <p class="send-hint desc">${escapeHtml(sec.description)}</p>
+      ${field(isBlueprint ? "Name des Blueprints" : "Name des Scripts", "name", { placeholder: isBlueprint ? "z. B. Tür offen melden" : "z. B. Waschmaschine fertig" })}
+      ${isBlueprint ? field("Beschreibung (optional)", "description") : ""}
+      <div class="send-label">${isBlueprint ? "Vorgabe-Profil" : "Empfänger"}</div>
+      ${recipientHtml}
+      ${field("Titel (optional)", "title")}
+      ${field(isBlueprint ? "Vorgabe-Nachricht" : "Nachricht", "message", { multiline: true })}
+      ${messageAtCall}
+      <div class="send-label">Dringlichkeit</div>
+      <div class="send-chips">${urgencyHtml}</div>
+      ${urgencyHint ? `<div class="send-hint">${escapeHtml(urgencyHint)}</div>` : ""}
+      <div class="send-actions wrap">
+        ${status}
+        ${extraButtons.join("")}
+        <button class="popup-primary" data-build-submit data-bf="${k}" ${f.busy ? "disabled" : ""}>
+          <ha-icon icon="mdi:hammer-wrench"></ha-icon><span>${sec.submit}</span>
+        </button>
+      </div>`;
+  }
+
+  _attachBuilderListeners() {
+    const root = this.shadowRoot;
+    const b = this._builder;
+
+    const toggle = root.querySelector("[data-builder-toggle]");
+    if (toggle) {
+      toggle.addEventListener("click", () => {
+        b.open = !b.open;
+        this._render();
+      });
+    }
+    root.querySelectorAll("[data-builder-section]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const key = el.getAttribute("data-builder-section");
+        b.section = b.section === key ? null : key;
+        this._render();
+      });
+    });
+
+    root.querySelectorAll("[data-build-recipient]").forEach((el) => {
+      el.addEventListener("click", () => {
+        b.forms[el.getAttribute("data-bf")].recipient = el.getAttribute("data-build-recipient");
+        this._render();
+      });
+    });
+    root.querySelectorAll("[data-build-urgency]").forEach((el) => {
+      el.addEventListener("click", () => {
+        b.forms[el.getAttribute("data-bf")].urgency = el.getAttribute("data-build-urgency");
+        this._render();
+      });
+    });
+    root.querySelectorAll("[data-build-check]").forEach((el) => {
+      el.addEventListener("change", () => {
+        b.forms[el.getAttribute("data-bf")][el.getAttribute("data-build-check")] = el.checked;
+      });
+    });
+    root.querySelectorAll("[data-field]").forEach((el) => {
+      stopKeyPropagation(el);
+      el.addEventListener("input", (ev) => {
+        const form = b.forms[el.getAttribute("data-bf")];
+        form[el.getAttribute("data-field")] = ev.target.value;
+        // Eine alte Rückmeldung passt nach einer Änderung nicht mehr - nur
+        // die betroffenen Elemente entfernen, das Eingabefeld bleibt stehen.
+        if (form.status && !form.busy) {
+          form.status = null;
+          const panel = el.closest(".acc-panel");
+          ["[data-build-overwrite]", "[data-build-open]", ".send-status"].forEach((sel) => {
+            const node = panel && panel.querySelector(sel);
+            if (node) node.remove();
+          });
+        }
+      });
+    });
+
+    root.querySelectorAll("[data-build-submit]").forEach((el) => {
+      el.addEventListener("click", () => this._submitBuilder(el.getAttribute("data-bf"), false));
+    });
+    root.querySelectorAll("[data-build-overwrite]").forEach((el) => {
+      el.addEventListener("click", () => this._submitBuilder(el.getAttribute("data-bf"), true));
+    });
+    root.querySelectorAll("[data-build-open]").forEach((el) => {
+      el.addEventListener("click", () => navigate(el.getAttribute("data-build-open")));
+    });
+  }
+
+  _setBuilderStatus(form, kind, text, extra = {}) {
+    form.status = { kind, text, ...extra };
+  }
+
+  _builderFail(form, text) {
+    this._setBuilderStatus(form, "error", text);
+    this._render();
+  }
+
+  async _submitBuilder(key, overwrite) {
+    const sec = BUILDER_SECTIONS.find((s) => s.key === key);
+    const form = this._builder.forms[key];
+    if (!sec || !form || form.busy || !this._hass) return;
+
+    const name = form.name.trim();
+    const recipient = form.recipient.trim();
+    const message = form.message.trim();
+    if (!name) return this._builderFail(form, "Bitte einen Namen eingeben.");
+    if (!recipient) return this._builderFail(form, "Bitte ein Profil wählen.");
+    if (!message && !(key === "script" && form.message_at_call)) {
+      return this._builderFail(form, "Bitte eine Nachricht eingeben.");
+    }
+
+    form.busy = true;
+    this._setBuilderStatus(form, "info", "Wird angelegt …");
+    this._render();
+
+    try {
+      if (key === "script") await this._createScript(form, name, recipient, message);
+      else await this._createBlueprint(sec, form, name, recipient, message, overwrite);
+    } catch (err) {
+      const code = err && err.code;
+      const text = errorText(err);
+      this._setBuilderStatus(form, "error", code === "file_exists" || code === "script_exists" ? text : `Fehler: ${text}`, { code });
+    }
+    form.busy = false;
+    this._render();
+  }
+
+  async _createScript(form, name, recipient, message) {
+    // Die Konfiguration baut die Integration (ein getesteter Generator);
+    // angelegt wird über die reguläre Script-Editor-API, die validiert und
+    // die Scripts neu lädt.
+    const built = await this._hass.callWS({
+      type: "notification_center/build_script",
+      name,
+      recipient,
+      message,
+      title: form.title.trim(),
+      urgency: form.urgency,
+      message_at_call: !!form.message_at_call,
+    });
+
+    let exists = true;
+    try {
+      await this._hass.callApi("GET", `config/script/config/${built.id}`);
+    } catch (err) {
+      if (err && err.status_code === 404) exists = false;
+      else throw err;
+    }
+    if (exists) {
+      const err = new Error(`Das Script „${built.id}“ existiert bereits - bitte einen anderen Namen wählen.`);
+      err.code = "script_exists";
+      throw err;
+    }
+
+    await this._hass.callApi("POST", `config/script/config/${built.id}`, built.config);
+    this._setBuilderStatus(form, "ok", `Script angelegt: script.${built.id} ✓`, {
+      open: `/config/script/edit/${built.id}`,
+      openLabel: "Script öffnen",
+    });
+    form.name = "";
+    form.title = "";
+    form.message = "";
+  }
+
+  async _createBlueprint(sec, form, name, recipient, message, overwrite) {
+    const result = await this._hass.callWS({
+      type: "notification_center/create_blueprint",
+      kind: sec.blueprintKind,
+      name,
+      description: form.description.trim(),
+      recipient,
+      title: form.title.trim(),
+      message,
+      urgency: form.urgency,
+      overwrite: !!overwrite,
+    });
+    this._setBuilderStatus(
+      form,
+      "ok",
+      result.overwritten ? "Blueprint aktualisiert ✓" : "Blueprint gespeichert ✓",
+      { open: "/config/blueprint/dashboard", openLabel: "Blueprints öffnen" }
+    );
+    form.name = "";
+    form.description = "";
+    form.title = "";
+    form.message = "";
+  }
+
   _css() {
     return `
+      .builder { border-top: 1px solid var(--divider-color, #e0e0e0); margin: 4px 8px 0; padding-top: 4px; }
+      .acc-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        border: none;
+        background: none;
+        font: inherit;
+        color: var(--primary-text-color);
+        padding: 10px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .acc-head:hover { background: var(--secondary-background-color, rgba(0,0,0,0.04)); }
+      .acc-head.main { font-weight: 500; }
+      .acc-head > span { flex: 1; }
+      .acc-head ha-icon { --mdc-icon-size: 20px; color: var(--secondary-text-color); }
+      .acc-head .chev { transition: transform 0.2s; }
+      .acc-head .chev.open { transform: rotate(180deg); }
+      .acc-body { padding: 0 0 4px 12px; }
+      .acc-item { border-left: 2px solid var(--divider-color, #e0e0e0); padding-left: 4px; margin: 2px 0; }
+      .acc-panel { display: flex; flex-direction: column; gap: 6px; padding: 2px 8px 12px 8px; }
+      .send-hint.desc { margin: 0 0 4px; }
+      .build-check { display: flex; align-items: flex-start; gap: 8px; font-size: 0.85rem; margin-top: 6px; cursor: pointer; }
+      .build-check input { margin-top: 2px; }
+      .send-actions.wrap { flex-wrap: wrap; }
+      .send-actions.wrap .send-status { flex-basis: 100%; }
+      .send-actions .popup-secondary { display: inline-flex; align-items: center; }
       .send { display: flex; flex-direction: column; gap: 6px; padding: 4px 16px 12px; }
       .send-label {
         font-size: 0.78rem;
@@ -1244,6 +1636,7 @@ class NotificationCenterCardEditor extends HTMLElement {
         { name: "show_title", selector: { boolean: {} } },
         { name: "icon", selector: { icon: {} } },
         { name: "show_search", selector: { boolean: {} } },
+        { name: "show_builder", selector: { boolean: {} } },
       ])
     );
     list.appendChild(display.details);
@@ -1572,6 +1965,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_updates: "Kategorie „Updates“ anzeigen",
       show_repairs: "Kategorie „Reparaturen“ anzeigen",
       show_send: "Tab „Senden“ anzeigen",
+      show_builder: "Bereich „Scripts & Blueprints“ anzeigen",
     };
     return labels[name] || name;
   }
@@ -1591,6 +1985,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_updates: config.show_updates !== false,
       show_repairs: config.show_repairs !== false,
       show_send: config.show_send !== false,
+      show_builder: config.show_builder !== false,
     };
   }
 
@@ -1606,6 +2001,7 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_updates: flat.show_updates,
       show_repairs: flat.show_repairs,
       show_send: flat.show_send,
+      show_builder: flat.show_builder,
       entities: {
         notifications: flat.entity_notifications,
         updates: flat.entity_updates,
@@ -1624,5 +2020,5 @@ window.customCards.push({
   type: "notification-center-card",
   name: "Notification Center",
   description:
-    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien - plus Schnellversand an Empfänger-Profile.",
+    "Benachrichtigungen, Updates und Reparaturen als eine Karte mit Tabs, Suche, Filtern und ein-/ausblendbaren Kategorien - plus Schnellversand an Empfänger-Profile sowie Scripts und Blueprints zum Selberbauen.",
 });

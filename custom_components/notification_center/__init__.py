@@ -35,6 +35,7 @@ from .const import (
     URGENCY_NORMAL,
 )
 from .notify import build_payload
+from .websocket import async_register_websocket
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await _async_register_card(hass)
     _async_register_services(hass)
+    _async_register_websocket_once(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -77,6 +79,15 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         hass.services.async_remove(DOMAIN, SERVICE_SEND)
     return unload_ok
+
+
+def _async_register_websocket_once(hass: HomeAssistant) -> None:
+    """Websocket-Befehle genau einmal registrieren (überlebt Neuladen)."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("websocket_registered"):
+        return
+    async_register_websocket(hass)
+    domain_data["websocket_registered"] = True
 
 
 def _async_register_services(hass: HomeAssistant) -> None:

@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Notification Center einrichten",
-        "description": "Legt vier Sensoren an: Benachrichtigungen, Updates, Reparaturen und Profile. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden. Empfänger-Profile für den Senden-Tab legst du danach unter „Konfigurieren“ an."
+        "description": "Legt fünf Sensoren an: Meldungen, Benachrichtigungen, Updates, Reparaturen und Profile. Es sind keine Zugangsdaten nötig, es kann nur eine Instanz eingerichtet werden. Empfänger-Profile, Lautlos-Modus und Zustellung stellst du danach unter „Konfigurieren“ ein."
       }
     },
     "abort": {
@@ -13,12 +13,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Empfänger-Profile",
-        "description": "Ein Profil bündelt Name und Benachrichtigungsziel. Wechselst du das Smartphone, änderst du nur das Ziel des Profils - Karte und Automationen bleiben unverändert.",
+        "title": "Notification Center {version}",
+        "description": "Version {version}. {update_info}\n\nEin Profil bündelt Name und Benachrichtigungsziel. Wechselst du das Smartphone, änderst du nur das Ziel des Profils - Karte und Automationen bleiben unverändert.",
         "menu_options": {
           "add_recipient": "Profil hinzufügen",
           "edit_recipient": "Profil bearbeiten",
-          "remove_recipient": "Profile entfernen"
+          "remove_recipient": "Profile entfernen",
+          "settings": "Lautlos-Modus und Verlauf",
+          "delivery": "Zustellung je Dringlichkeit"
         }
       },
       "add_recipient": {
@@ -48,6 +50,26 @@
         "title": "Profile entfernen",
         "data": {
           "recipients": "Profile"
+        }
+      },
+      "settings": {
+        "title": "Lautlos-Modus und Verlauf",
+        "description": "Im Lautlos-Modus gehen keine Push-Nachrichten raus; Meldungen bleiben in Karte und Widget sichtbar. Kritische Meldungen können ihn umgehen.",
+        "data": {
+          "silent_mode": "Lautlos-Modus (keine Push-Nachrichten)",
+          "critical_bypass": "Kritische trotzdem zustellen",
+          "history_days": "Verlauf behalten (Tage)",
+          "history_max": "Verlauf: höchstens (Einträge)"
+        }
+      },
+      "delivery": {
+        "title": "Zustellung je Dringlichkeit",
+        "description": "Wähle je Dringlichkeit, welche Profile eine Push-Nachricht erhalten. Ohne eigene Auswahl bekommen kritische Meldungen und Warnungen Push auf allen Smartphone-Profilen.",
+        "data": {
+          "critical": "Kritisch",
+          "warning": "Warnung",
+          "info": "Info",
+          "ok": "In Ordnung"
         }
       }
     },

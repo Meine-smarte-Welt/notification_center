@@ -1,454 +1,221 @@
+🇩🇪 Deutsch · [🇬🇧 English](README.en.md) · [🇳🇱 Nederlands](README.nl.md) · [🇫🇷 Français](README.fr.md) · [🇪🇸 Español](README.es.md)
+
 # Notification Center
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Meine-smarte-Welt/notification_center/main/custom_components/notification_center/brand/icon.png" width="96" alt="Notification Center Icon">
+  <img src="https://raw.githubusercontent.com/Meine-smarte-Welt/notification_center/main/custom_components/notification_center/brand/icon.png" width="96" alt="Notification Center">
 </p>
 
-Eine Home-Assistant-Integration, die **Benachrichtigungen**, **Updates** und
-**Reparaturen** als eine Dashboard-Karte mit drei Tabs zusammenfasst - inklusive
-Suche, Filterleiste, Detail-Popup und frei wählbaren Farben. Optisch und in der
-Bedienung angelehnt an die Schwester-Integrationen *FRITZ!Box Anrufe* und
-*FRITZ!Box Netzwerk*.
+Eine Home-Assistant-Integration, die **Meldungen deiner Integrationen**, **Benachrichtigungen**, **Updates** und **Reparaturen** als eine Dashboard-Karte zusammenfasst - mit Lautlos-Modus, Push-Zustellung über Empfänger-Profile, Android-Widget und Schnellversand.
 
----
+## Funktionsumfang
 
-## Was die Integration kann
+- **Meldungen:** Integrationen (z. B. Fritz!Box, Zigbee2MQTT Manager, Matter Manager) melden Ereignisse ans Notification Center. Sortiert nach Dringlichkeit: kritisch, Warnung, Info, in Ordnung
+- **Lautlos-Modus:** hält Push-Nachrichten zurück, die Meldungen bleiben in Karte und Widget sichtbar; kritische Meldungen können ihn umgehen
+- **Zustellung je Dringlichkeit:** Push über deine Empfänger-Profile (Smartphone-Wechsel = eine Änderung)
+- **Quellenübersicht:** welche Integration angemeldet ist, welche Version sie hat und welche Meldungsarten sie abschaltet
+- **Verlauf:** erledigte und quittierte Meldungen (Standard 30 Tage, höchstens 200)
+- Vier Sensoren für Listen plus Profil-Sensor, Android-Template-Widget, Schnellversand, Scripts und Blueprints
+- Karte mit Tabs, Statistik-Chips, Suche, Sortierung, Detail-Popup, Banner, Zwei-Klick-Bestätigung und frei wählbaren Farben
+- Alles in **fünf Sprachen**: Deutsch, Englisch, Niederländisch, Französisch, Spanisch
 
-- Drei zusammenfassende Sensoren: Benachrichtigungen, Updates, Reparaturen
-- **Neu in 0.0.7:** Tab **Senden** für den Schnellversand von Nachrichten an
-  zentral verwaltete **Empfänger-Profile** (Smartphone oder E-Mail), mit
-  Dringlichkeit bis hin zum Umgehen des Lautlos-Modus
-- **Neu in 0.0.8:** Accordion **Scripts & Blueprints** unter der Liste: Scripts,
-  Script-Blueprints und Automations-Blueprints direkt in der Karte
-  zusammenklicken und dauerhaft in Home Assistant anlegen
-- Jeder Sensor zählt seine Kategorie als Zustand und trägt die Einzeleinträge
-  im Attribut `items`
-- Ein Attribut `summary` pro Sensor - ein fertiger Kurztext, gedacht für ein
-  **Android-Template-Widget** auf dem Homescreen (siehe unten)
-- Dashboard-Karte mit drei Tabs, Suchfeld, Filterchips je Kategorie und
-  Detail-Popup pro Eintrag
-- Aktionen direkt aus der Karte: Benachrichtigung schliessen, Update
-  installieren, zu den Reparaturen springen
-- Farben pro Kategorie frei einstellbar, leer = aktives Theme
-- Karte wird mitgeliefert und automatisch als Lovelace-Ressource eingetragen
+## Voraussetzungen
 
----
+- Home Assistant ab 2025.6
+- HACS (empfohlen) oder manuelle Installation
+- Optional: die Schwester-Integrationen in Version 1.0.0, damit Meldungen ankommen
 
 ## Installation
 
-### Manuell
+**HACS:** Benutzerdefiniertes Repository `https://github.com/Meine-smarte-Welt/notification_center` (Kategorie *Integration*) hinzufügen, „Notification Center“ installieren, Home Assistant neu starten. Vorabversionen (Beta/RC) siehst du nur, wenn du in HACS „Beta-Versionen anzeigen“ aktivierst.
 
-Den Ordner `custom_components/notification_center` in das `config`-Verzeichnis
-von Home Assistant kopieren und neu starten.
-
-### Über HACS
-
-Als benutzerdefiniertes Repository (Kategorie *Integration*) hinzufügen und
-„Notification Center" installieren.
+**Manuell:** Ordner `custom_components/notification_center` in das `config`-Verzeichnis kopieren und neu starten.
 
 ## Einrichtung
 
-Einstellungen → Geräte & Dienste → **Integration hinzufügen** →
-„Notification Center". Es sind keine Zugangsdaten nötig, es kann nur
-eine Instanz eingerichtet werden.
+Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Notification Center“. Es sind keine Zugangsdaten nötig, es gibt nur eine Instanz.
 
-## Dashboard-Karte
+**Empfänger-Profile:** *Konfigurieren* → *Profil hinzufügen* (Name, Art Smartphone/E-Mail, `notify`-Ziel). Wechselst du das Smartphone, änderst du nur das Ziel des Profils.
 
-Karte hinzufügen → **Notification Center** → die drei Sensoren
-zuweisen. Beispiel-YAML:
+**Lautlos-Modus, Zustellung, Verlauf:** ebenfalls unter *Konfigurieren* oder direkt in der Karte (Zahnrad → Optionen).
+
+## Die Karte
+
+Die Tabs (Reihenfolge fest, der Zahnrad-Tab ist immer der letzte):
+
+- **Meldungen:** Meldungen der Integrationen, Chips mit Zähler (Kritisch/Warnung/Info), Verlauf, Quittieren
+- **Benachrichtigungen:** persistente Benachrichtigungen von Home Assistant
+- **Updates:** verfügbare Updates, Installieren im Popup
+- **Reparaturen:** offene Reparaturen
+- **Senden:** Schnellversand an ein Profil
+- **Zahnrad:** App-Version, Quellen, Optionen, Wartung, Ereignisse
 
 ```yaml
 type: custom:notification-center-card
 title: Notification Center
-show_title: true
-icon: mdi:bell-badge-outline
-show_search: true
-show_notifications: true
-show_updates: true
-show_repairs: true
-show_send: true
-show_builder: true
+default_tab: messages
 entities:
+  messages: sensor.notification_center_meldungen
   notifications: sensor.notification_center_benachrichtigungen
   updates: sensor.notification_center_updates
   repairs: sensor.notification_center_reparaturen
-  recipients: sensor.notification_center_profile   # Profil-Sensor für den Senden-Tab
-
-# Farben (leer = aktives Theme)
-color_notification: ""
-color_update: ""
-color_repair: ""
-color_send: ""
+  recipients: sensor.notification_center_profile
 ```
 
-### Nachrichten senden & Empfänger-Profile
-
-Ab 0.0.7 gibt es neben den drei Listen einen vierten Tab **Senden**. Er
-erscheint, sobald im Editor (Abschnitt *Widgets*) der Sensor
-*Profile (Senden-Tab)* zugewiesen ist, und lässt sich mit `show_send: false`
-wieder ausblenden. Bestehende Karten aus 0.0.6 bleiben unverändert, bis dieser
-Sensor eingetragen wird.
-
-**Profile anlegen:** Einstellungen → Geräte & Dienste → Notification Center →
-**Konfigurieren** → *Profil hinzufügen*. Ein Profil besteht aus
-
-- **Name** (z. B. „Thorsten Handy“),
-- **Art**: Smartphone (Push) oder E-Mail,
-- **Ziel**: ein Dienst der Domain `notify`, z. B. `mobile_app_pixel_9` oder
-  der Name deines E-Mail-Dienstes.
-
-**Smartphone gewechselt?** Unter *Profil bearbeiten* nur das Ziel ändern. Die
-Karte und alle Automationen, die das Profil ansprechen, funktionieren ohne
-weitere Anpassung weiter - die interne ID des Profils bleibt auch bei einer
-Umbenennung stabil.
-
-**Dringlichkeit** (Smartphone-Profile, Companion App):
-
-| Stufe | Wirkung |
+| Schlüssel | Bedeutung |
 |---|---|
-| Normal | ganz normale Benachrichtigung |
-| Hoch | sofortige Zustellung (Android `priority: high`, `ttl: 0`; iOS *time-sensitive*, durchbricht Fokus-Modi) |
-| Dringend | umgeht den Lautlos-Modus (Android: Alarm-Kanal `alarm_stream`; iOS: Critical Alert - dafür muss kritischer Hinweis-Zugriff in der Companion App erlaubt sein) |
+| `title / show_title / icon` | Titel, Titel ein-/ausblenden, Kopf-Icon |
+| `default_tab` | Starttab (`messages`, `notifications`, `updates`, `repairs`, `send`, `settings`) |
+| `default_sort` | Standard-Sortierung (`default`, `newest`, `oldest`, `title`) |
+| `show_messages … show_settings` | Jede Kategorie einzeln ein-/ausschaltbar (mindestens eine bleibt sichtbar) |
+| `show_search / show_filter_bar / show_stats` | Suchfeld, Sortierauswahl, Statistik-/Filter-Chips |
+| `max_rows` | Höchstzahl der Zeilen (0 = alle) |
+| `zoom` | Skalierung der Karte in Prozent (50-150) |
+| `read_only` | blendet alle Bedienelemente zum Ändern aus |
+| `show_builder` | Bereich „Scripts & Blueprints“ |
+| `entities.*` | Sensoren (`messages` ist neu und hat die Standard-ID `sensor.notification_center_meldungen`) |
 
-Bei E-Mail-Profilen gibt es kein Gegenstück; die Stufe landet als Präfix im
-Betreff („Wichtig: …“ / „DRINGEND: …“).
+## Farben
 
-**Aus Automationen und Scripts** steht dieselbe Funktion als Service bereit:
+Alle Farben sind pro Karte einstellbar (Editor-Abschnitt *Farben*). Leer = Theme-Standard. Erlaubt sind Hex, `rgb()`, `hsl()` und `var(--…)`.
+
+| Schlüssel | Standard |
+|---|---|
+| `color_message` | `#03a9f4` |
+| `color_notification` | `#0288d1` |
+| `color_update` | `#fb8c00` |
+| `color_repair` | `#e53935` |
+| `color_send` | `#03a9f4` |
+| `color_error` | `#db4437` |
+| `color_warning` | `#ff9800` |
+| `color_info` | `#039be5` |
+| `color_success` | `#43a047` |
+
+## Services
+
+`notification_center.send` sendet eine Nachricht an ein Empfänger-Profil. „Dringend“ umgeht bei Smartphones den Lautlos-Modus (Android: Alarm-Kanal, iOS: Critical Alert), bei E-Mail steht ein Präfix im Betreff.
 
 ```yaml
 action: notification_center.send
 data:
-  recipient: Thorsten Handy     # Name oder ID des Profils
-  title: Waschmaschine          # optional
+  recipient: Thorsten Handy
+  title: Waschmaschine
   message: Die Wäsche ist fertig.
   urgency: normal               # normal | high | critical
 ```
 
-### Scripts & Blueprints bauen
+## Ereignisse (Schnittstelle für Integrationen)
 
-Unter der Liste steht ein aufklappbares Menü **Scripts & Blueprints** mit drei
-Abschnitten (es ist immer nur einer offen). Alles, was du dort anlegst, bleibt
-dauerhaft in Home Assistant bestehen und ist in anderen Automationen nutzbar.
-Mit `show_builder: false` (oder im Editor, Abschnitt *Darstellung*) lässt sich
-der Bereich ausblenden. Zum Anlegen sind **Administrator-Rechte** nötig.
+Integrationen sprechen das Notification Center über den Home-Assistant-Event-Bus an (kein MQTT). Alle Nutzdaten enthalten `schema: 1`. Das Notification Center ist für die Integrationen **optional**: ist es nicht installiert, passiert dort nichts.
 
-| Abschnitt | Ergebnis |
-|---|---|
-| **Script erstellen** | Ein Script (`script.<name>`) in der `scripts.yaml`, das per `notification_center.send` eine Nachricht an ein Profil schickt. Optional wird die Nachricht erst beim Aufruf als Feld `message` übergeben (der eingetragene Text dient dann als Rückfall). |
-| **Script-Blueprint erstellen** | Ein Blueprint unter `blueprints/script/notification_center/`. Profil, Titel, Nachricht und Dringlichkeit sind Eingaben mit den Formularwerten als Vorgabe. |
-| **Automations-Blueprint erstellen** | Ein Blueprint unter `blueprints/automation/notification_center/`: Erreicht eine Entität einen Zustand, wird die Nachricht gesendet. Entität und Zustand wählst du erst beim Verwenden. |
+| Ereignis | Richtung | Zweck |
+|---|---|---|
+| `notification_center_register` | Integration → NC | Katalog der Meldungsarten (Dringlichkeit, Symbol, Texte in fünf Sprachen, Schalterstand) |
+| `notification_center_report` | Integration → NC | eine Meldung: `state` = `active` oder `resolved`, stabiler `key`, `subject`, `placeholders`, `initial` |
+| `notification_center_sync` | Integration → NC | welche Keys einer auflösbaren Art aktiv sind; alle anderen offenen Meldungen werden still geschlossen |
+| `notification_center_ping` | NC → Integrationen | beim Start des NC; jede Integration antwortet mit register und sync |
 
-**Ablauf:** Name und Profil wählen, Nachricht und Dringlichkeit festlegen,
-*Erstellen* tippen. Die Karte meldet das Ergebnis und bietet direkt einen
-Button zum Öffnen (*Script öffnen* bzw. *Blueprints öffnen*). Blueprints
-erscheinen anschließend unter *Einstellungen → Automationen & Szenen →
-Blueprints*; ein Script aus einem Script-Blueprint legst du dort mit
-*Script erstellen* an.
+- Meldungen enthalten nur Schlüssel und Platzhalter. Die Texte kommen aus dem Katalog der Quelle und erscheinen in der Sprache von Home Assistant (Rückfall Englisch).
+- `initial: true` (Ausgangszustand nach Start/Sync) erscheint in der Karte, löst aber **keinen** Push aus.
+- Nicht auflösbare Arten (z. B. verpasster Anruf) bleiben, bis du sie quittierst; sie werden nie per Sync geschlossen.
+- Rufnummern, Namen und Texte werden nie ins Log geschrieben.
 
-**Schutz vor Überschreiben:** Existiert ein Script mit derselben ID bereits,
-wird nichts verändert, und du wählst einen anderen Namen. Existiert ein
-Blueprint bereits, bietet die Karte *Überschreiben* an. Scripts, die den
-Blueprint nutzen, werden danach automatisch neu geladen.
+Beispiel einer Meldung:
 
-> Der Name wird zur ID bzw. zum Dateinamen („Tür offen melden“ →
-> `tur_offen_melden`). Umlaute werden dabei umgeschrieben.
+```yaml
+event: notification_center_report
+event_data:
+  schema: 1
+  source: meine_integration
+  entry_id: beispiel
+  type: door_open
+  key: haustuer
+  state: active
+  subject: { id: haustuer, name: Haustür, kind: device }
+  placeholders: { name: Haustür }
+```
 
-### Kategorien als Tabs
+## Sensoren
 
-Die drei Kategorien liegen als Tabs nebeneinander (Icon, Name und
-Zähler-Badge je Tab) - passend zum Look der anderen Karten. Suchfeld und
-Filterchips gehören zum gerade aktiven Tab.
+| Sensor | Zustand | Attribute |
+|---|---|---|
+| **Meldungen** | Anzahl offener Meldungen | `items`, `summary`, `by_severity`, `history`, `sources`, `settings`, `app`, `log` |
+| **Benachrichtigungen** | Anzahl | `items`, `summary` |
+| **Updates** | Anzahl | `items`, `summary` |
+| **Reparaturen** | Anzahl | `items`, `summary` |
+| **Profile** | Anzahl Profile | `items`, `summary` |
 
-### Titel ein-/ausblenden
+Die großen Attribute werden nicht in der Langzeitdatenbank gespeichert.
 
-`show_title: false` blendet Kopfzeile (Titel + Icon) komplett aus, wenn nur
-die Kategorien selbst auf einem Dashboard stehen sollen.
+## Lautlos-Modus und Zustellung
 
-### Kategorien ein-/ausblenden
+- **Lautlos-Modus an:** keine Push-Nachrichten. Meldungen bleiben in Karte und Widget sichtbar. Ein Banner in der Karte weist darauf hin.
+- **Kritische trotzdem zustellen** (Standard an): `critical` umgeht den Lautlos-Modus über die Dringlichkeits-Funktion der Smartphone-Benachrichtigung.
+- **Zustellung je Dringlichkeit:** ohne eigene Auswahl erhalten kritische Meldungen und Warnungen Push auf allen Smartphone-Profilen, Info und „in Ordnung“ nur Karte und Widget.
+- **Bündeln:** Die ersten 5 gleichartigen Meldungen innerhalb von 10 Sekunden gehen einzeln raus, weitere werden zu **einem** Push zusammengefasst („N weitere Meldungen“). Alle Einzelmeldungen bleiben in der Liste.
 
-`show_notifications`, `show_updates` und `show_repairs` blenden die jeweilige
-Kategorie komplett aus - Tab, Zähler und Inhalt verschwinden. Ist keine
-Kategorie mehr aktiv, zeigt die Karte einen entsprechenden Hinweis.
+## Versionsanzeige und Update-Hinweis
 
-### Benachrichtigungen löschen
+Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.0.0 · Integration 1.0.0`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab (bei Beta/RC auch Pre-releases). Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
 
-Jede einzelne Benachrichtigung hat ein Löschen-Icon in der Zeile sowie im
-Detail-Popup (`persistent_notification.dismiss`). Oberhalb der Liste steht
-zusätzlich *Alle löschen*, sobald die Kategorie „Benachrichtigungen" aktiv
-ist und mindestens ein Eintrag vorhanden ist - ruft
-`persistent_notification.dismiss_all` auf.
+## Einstellungen (Zahnrad)
 
-### Farben
-
-Im grafischen Editor, Abschnitt *Farben*: eine Farbauswahl (Swatch) zum
-Klicken plus ein Textfeld für Hex, `rgb()`, `hsl()`, CSS-Farbnamen oder
-`var(--…)` - genau wie bei FRITZ!Box Netzwerk. Ein Klick auf *Alle Farben
-zurücksetzen* leert alle drei Felder auf einmal, die Karte folgt dann wieder
-dem aktiven Theme.
-
-### Editor in Abschnitten
-
-Der grafische Editor ist in aufklappbare Abschnitte gegliedert - Widgets,
-Darstellung, Kategorien, Farben, Widgets (zuletzt) - ebenfalls wie bei den
-anderen Integrationen.
+Feste Reihenfolge der Akkordeons: **App-Version** · **Quellen** · **Optionen** (Lautlos-Modus, Zustellung) · **Wartung** (Testmeldung, alle quittieren, Verlauf leeren, jeweils mit Zwei-Klick-Bestätigung) · **Ereignisse** (Protokoll seit Start, ohne Inhalte). Ändern dürfen nur Administratoren.
 
 ## Android-Widget
 
-Die Sensoren sind bewusst so aufgebaut, dass sie sich direkt in ein
-**Template-Widget** der Home-Assistant-Companion-App einsetzen lassen, ohne
-zusätzliche Helper oder Automationen. Im Editor-Abschnitt *Widgets* steht
-dafür bereits der fertige, auf die zugewiesenen Sensoren zugeschnittene
-Quelltext - je Sensor einzeln sowie für alle drei zusammen, jeweils mit einem
-*Quelltext kopieren*-Button - besonders praktisch am
-Smartphone, um ihn direkt im Widget-Bereich der Android-App wieder
-einzufügen:
+Im Karten-Editor (Abschnitt *Widgets*) steht der fertige Quelltext für ein Template-Widget der Companion-App, je Sensor oder für alle zusammen. Die Companion-App rendert nur einfaches HTML; Trennlinien bestehen aus „─“-Zeichen (Länge über die Variable `line`). Benachrichtigungszugriff für die Companion-App aktivieren, sonst aktualisiert das Widget nur alle 30 Minuten.
 
-Die Quelltexte sind an eine Mail-Übersicht angelehnt: eine Kopfzeile
-„Kategorie (Anzahl)“ in der Kategorie-Farbe aus dem Abschnitt *Farben* (nur
-Hex-Werte, sonst Standardfarbe), darunter die ersten drei Einträge mit
-fettem Titel und kleiner, grauer Nachricht sowie „+ n weitere“. Bei 0
-Einträgen erscheint ein grünes „✓ Alles erledigt“. *Alle drei zusammen* zeigt
-je Kategorie die Kopfzeile mit den ersten zwei Titeln; Kategorien ohne
-Einträge sind grau.
+## Scripts & Blueprints
 
-**Trennlinien:** Android-Widgets kennen kein `<hr>`. Die Linien bestehen deshalb
-aus einer Reihe von „─“-Zeichen in Hellgrau zwischen den Einträgen bzw.
-Kategorien. Die Länge steht als `{%- set line = '────…' -%}` ganz oben im
-Quelltext - bei einem schmalen Widget einfach ein paar Zeichen löschen, bei
-einem breiten welche ergänzen.
+Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprints zusammenklicken (Administrator nötig). Bestehende Scripts werden nie überschrieben, Blueprints nur nach Rückfrage.
 
-**Grenzen des Template-Widgets:** Die Companion-App rendert hier nur einfaches
-HTML (`<b>`, `<big>`, `<small>`, `<font color>`, `<br>`). Karten mit
-abgerundeten Zeilen, Icons und Buttons wie beim Gmail-Widget sind damit nicht
-möglich. Hintergrundfarbe, Textfarbe, Schriftgröße und Ausrichtung stellt die
-App beim Widget selbst ein. Pro Widget immer nur **einen** Quelltext einfügen.
+## Sicherheit
 
-Nicht vergessen: Benachrichtigungszugriff für die Companion App aktivieren
-(Android-Einstellungen → Benachrichtigungen → Benachrichtigungszugriff →
-Home Assistant → Real-time), sonst aktualisiert das Widget nur alle 30 Minuten.
-
-## Versionshistorie
-
-### 0.0.8 – Scripts und Blueprints in der Karte bauen
-
-- Neues Accordion **Scripts & Blueprints** unter der Liste mit den Abschnitten
-  *Script erstellen*, *Script-Blueprint erstellen* und *Automations-Blueprint
-  erstellen*
-- Scripts werden über die reguläre Script-Editor-API angelegt (Validierung und
-  automatisches Neuladen inklusive); bestehende Scripts werden nie
-  überschrieben
-- Blueprints schreibt die Integration über die offizielle Blueprint-Schnittstelle
-  von Home Assistant nach `blueprints/<script|automation>/notification_center/`;
-  vorhandene Blueprints lassen sich bewusst überschreiben
-- Optional: Nachricht beim Script-Aufruf übergeben (Feld `message`)
-- Neue Websocket-Befehle `notification_center/build_script` und
-  `notification_center/create_blueprint` (nur Administratoren)
-- Editor: neuer Schalter *Bereich „Scripts & Blueprints“ anzeigen*
-- Fehlermeldungen zeigen den eigentlichen Grund (z. B. von der Script-Validierung)
-- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren
-
-### 0.0.7 – Senden-Tab und Empfänger-Profile
-
-- Neuer Tab **Senden** in der Karte: Profil wählen, optional Titel, Nachricht,
-  Dringlichkeit (Normal / Hoch / Dringend), Senden mit Rückmeldung
-  („Gesendet ✓“ bzw. Fehlermeldung)
-- **Empfänger-Profile** zentral in der Integration (*Konfigurieren*):
-  hinzufügen, bearbeiten, entfernen. Smartphone-Wechsel = eine Änderung am
-  Profil
-- Neuer Service `notification_center.send` (Empfänger, Nachricht, Titel,
-  Dringlichkeit) - nutzbar in Automationen, Scripts und Blueprints
-- Neuer Sensor **Profile** (`sensor.notification_center_profile`) liefert die
-  Profile für die Karte
-- Dringlichkeit „Dringend“ umgeht den Lautlos-Modus (Android Alarm-Kanal,
-  iOS Critical Alert); bei E-Mail als Betreff-Präfix
-- Editor: neuer Schalter *Tab „Senden“ anzeigen*, Sensor-Zuweisung *Profile*
-  und eigene Farbe *Senden*
-- Das Formular bleibt beim Tippen unangetastet, auch wenn Home Assistant
-  zwischendurch Updates schickt
-- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren
-
-### 0.0.6 – Trennlinien in den Widgets
-
-- Hellgraue Trennlinie zwischen den Einträgen, vor „+ n weitere“ und im Widget
-  „Alle drei zusammen“ zwischen den Kategorien
-- Länge der Linie über die Variable `line` am Anfang des Quelltexts anpassbar
-
-### 0.0.5 – Widgets im Stil einer Mail-Übersicht
-
-- Widget-Quelltexte neu: Kopfzeile „Kategorie (Anzahl)“, darunter die ersten
-  drei Einträge (Titel fett, Nachricht klein/grau), „+ n weitere“, grünes
-  „✓ Alles erledigt“ bei 0 Einträgen
-- *Alle drei zusammen*: je Kategorie Kopfzeile plus die ersten zwei Titel
-- Texte werden maskiert (`| e`) und gekürzt, damit Sonderzeichen wie `&` oder
-  `<` das Widget nicht stören
-
-### 0.0.4 – Karte erscheint unter „Ressourcen"
-
-- Die Karte wird jetzt wie bei FRITZ!Box Anrufe als **Lovelace-Ressource**
-  (Typ `module`) angelegt und ist damit unter *Einstellungen → Dashboards →
-  Ressourcen verwalten* sichtbar. Bei einem Update wird der Eintrag mit
-  neuer `?v=`-Version aktualisiert, es entstehen keine Duplikate.
-- `add_extra_js_url` entfällt (doppeltes Laden kann in der Companion-App dazu
-  führen, dass die Karte gar nicht geladen wird).
-- Im YAML-Modus muss die Ressource
-  `/notification_center_files/notification-center-card.js` (Typ `module`)
-  weiterhin von Hand eingetragen werden.
-- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren.
-
-### 0.0.3 – Schönere Android-Widgets
-
-- Widget-Quelltexte neu gestaltet: farbige Zahl (Farben aus dem Editor),
-  korrekte Einzahl/Mehrzahl statt „(en)/(s)", Kurztext klein darunter, grünes
-  „✓ Alles erledigt" bei 0 Einträgen
-- Behebt zusammengezogene Zeilen im „Alle drei"-Widget: es werden jetzt
-  `<br>`-Umbrüche verwendet
-- Quelltext aktualisiert sich live, wenn im Abschnitt *Farben* eine Farbe
-  geändert wird
-
-### 0.0.2 – Farbwähler, Suche, Kopieren je Sensor, Widgets zuletzt
-
-- **Bugfix Farbauswahl:** Editor nach dem Vorbild von FRITZ!Box Anrufe neu
-  aufgebaut (Light-DOM statt Shadow-DOM, native Abschnitte, unveränderliche
-  Konfiguration, `config-changed` mit `bubbles`/`composed`). Swatch und Textfeld
-  zeigen den aktuell wirksamen Wert an.
-- **Bugfix Suche:** Die Suche baut nicht mehr die ganze Karte neu auf, sondern
-  nur die Liste - das Suchfeld behält Fokus und Tastatur, auch bei
-  Home-Assistant-Updates während des Tippens.
-- **Bugfix Kopieren:** Fallback für die Companion-App (unsicherer Kontext ohne
-  Clipboard-API) - das Hilfsfeld liegt jetzt im Editor-Dialog statt in
-  `document.body`. Rückmeldung „kopiert" / „nicht möglich", bei Fehlschlag wird
-  der Text zum manuellen Kopieren markiert.
-- Quelltext kopieren jetzt **je Sensor einzeln** (Anzahl + `summary`) plus
-  „Alle drei zusammen"
-- Editor-Reihenfolge: Darstellung, Kategorien, Farben, **Widgets als letzter
-  Abschnitt**
-
-### 0.0.1b4 – Such-/Farbfeld-Fix, Widgets-Abschnitt, Icon leerbar, README-Icon
-
-- **Bugfix Suche:** Zeichen gingen teilweise verloren, weil jede Eingabe die
-  komplette Karte neu aufgebaut hat (`innerHTML`) und dabei das Eingabefeld
-  samt Fokus zerstört wurde. Fokus und Cursor-Position werden jetzt vor dem
-  Neuaufbau gesichert und danach wiederhergestellt.
-- **Bugfix Farbfeld (Editor):** aus demselben Grund - jeder Tastendruck löst
-  über `config-changed` einen erneuten `setConfig()`-Aufruf aus, der das
-  Textfeld sonst mitten im Tippen auf den letzten bestätigten Wert
-  zurückgesetzt hat. Das Feld wird jetzt nicht mehr angefasst, während es den
-  Fokus hat.
-- **Bugfix Icon leeren:** ein im Editor geleertes Icon-Feld wurde beim
-  nächsten Sync sofort wieder mit dem Standard-Icon aufgefüllt. Ein
-  ausdrücklich leeres Icon wird jetzt respektiert - die Kopfzeile zeigt dann
-  gar kein Icon, nur den Titel.
-- Editor-Abschnitt *Sensoren* umbenannt in **Widgets**: enthält weiterhin die
-  drei Sensor-Zuweisungen, zusätzlich den fertigen Android-Template-Widget-
-  Quelltext mit *Quelltext kopieren*-Button
-- Icon im README zeigt nicht mehr auf einen relativen Pfad (den HACS beim
-  Rendern nicht auflöst), sondern auf die absolute `raw.githubusercontent.com`-
-  URL
-
-### 0.0.1b3 – Bugfix: Editor-Absturz "Cannot read properties of undefined"
-
-- Home Assistant setzt beim Öffnen des Karten-Editors `hass` und ruft
-  `setConfig()` in keiner garantierten Reihenfolge auf. Traf `hass` zuerst
-  ein, existierte `this._forms` noch nicht, und der Editor stürzte mit
-  „Cannot read properties of undefined (reading 'forEach')" ab. `_forms`
-  wird jetzt im Konstruktor angelegt, zusätzlich zur Absicherung im
-  `hass`-Setter.
-
-### 0.0.1b2 – Tabs zurück, Editor als Akkordeon, Löschen, Such-Fix
-
-- Kategorien wieder als **Tabs nebeneinander** (die Akkordeon-Darstellung aus
-  0.0.1b1 war ein Missverständnis - gemeint war der Editor, nicht die Karte)
-- Grafischer Editor jetzt in aufklappbare Abschnitte gegliedert: *Sensoren*,
-  *Darstellung*, *Kategorien*, *Farben*
-- **Löschen** je einzelner Benachrichtigung jetzt auch im Detail-Popup (rief
-  vorher nur das Popup zu, ohne die Benachrichtigung tatsächlich zu
-  entfernen), zusätzlich **„Alle löschen"** oberhalb der Liste
-  (`persistent_notification.dismiss_all`)
-- **Bugfix Suche:** Zeichen wie „e" im Suchfeld öffneten Home Assistants
-  globale Quick-Bar, weil Home Assistant bei Tastaturkürzeln nur das
-  Zielelement prüft und das durch das Shadow DOM der Karte auf das
-  Karten-Element zurückgesetzt wurde, statt das tatsächliche Eingabefeld zu
-  sehen. Tastatur-Events aus Such- und Farbfeldern werden jetzt nicht mehr
-  nach aussen weitergegeben.
-
-### 0.0.1b1 – Umbenennung, Bugfix Reparaturen, Update-Installation im Popup
-
-- Integration und Karte umbenannt in **Notification Center** (Domain bleibt
-  `notification_center`, entsprechend auch neue Entity-IDs) sowie
-  Integrations-Icon lokal unter `custom_components/notification_center/brand/`
-  ergänzt (`icon.png` 256×256, `icon@2x.png` 512×512) über die seit Home
-  Assistant 2026.3 unterstützten lokalen Brand-Images
-- **Bugfix Reparaturen-Sensor:** zählte bisher auch längst erledigte,
-  archivierte Issues mit (falsches Attribut geprüft). Home Assistant markiert
-  nicht-persistente Issues nach einem Neustart zunächst als inaktiv (`active:
-  False`) und aktiviert sie nur neu, wenn die verantwortliche Integration das
-  Problem in dieser Session erneut feststellt - genau dieses Feld wird jetzt
-  korrekt ausgewertet, daher stimmt die Anzahl jetzt mit Einstellungen →
-  System → Reparaturen überein
-- Update-Popup zeigt jetzt zusätzlich zu „Update-Notizen öffnen" auch einen
-  „Jetzt installieren"-Button
-- Kopfzeile (Titel + Icon) über `show_title` ein-/ausblendbar
-
-### 0.0.1b0 – Vorabversion (Pre-Release)
-
-- Erste veröffentlichte Version, als Beta gekennzeichnet
-- Drei Sensoren (Benachrichtigungen, Updates, Reparaturen) mit `items`- und
-  `summary`-Attribut
-- Dashboard-Karte mit Tabs, Suche, Filterchips, Detail-Popup
-- Kategorien einzeln ein-/ausblendbar (`show_notifications`, `show_updates`,
-  `show_repairs`)
-- Farben je Kategorie frei wählbar (Swatch + Texteingabe, „Alle Farben
-  zurücksetzen")
-- Frei wählbares Kopf-Icon (Standard: `mdi:bell-badge-outline`)
+- Schreibende Aktionen (Quittieren, Schalter, Wartung, Testmeldung, Scripts/Blueprints) nur für Administratoren; Eingaben werden im Backend geprüft.
+- Alle Texte in der Karte werden maskiert, Farbwerte laufen über eine Allowlist.
+- Meldungen enthalten keine Zugangsdaten; Texte, Namen und Rufnummern landen nicht im Log und nicht in der Diagnose.
+- Riskante Aktionen verlangen zwei Klicks statt eines Browser-Dialogs.
+- Der Release-Link wird nur angezeigt, wenn er mit `https://github.com/` beginnt.
 
 ## Bekannte Einschränkungen
 
-- **Persistent Notifications** sind in Home Assistant kein regulärer Entity-Typ
-  und haben keine offizielle Python-API. Diese Integration liest sie defensiv
-  über einen internen Speicherort von `persistent_notification` aus (mit
-  Try/Except). Ändert sich das in einer künftigen HA-Version, bleibt die
-  Kategorie „Benachrichtigungen" schlicht leer - es gibt keinen Fehler, aber
-  ggf. muss `sensor.py` angepasst werden.
-- Updates und Reparaturen nutzen ausschliesslich offizielle, öffentliche
-  Home-Assistant-APIs (`update.*`-Entities bzw. die Issue Registry) und sind
-  entsprechend stabiler.
-- Die Karte kommt ohne grafischen Spalten-Editor wie bei FRITZ!Box Netzwerk,
-  da es sich um eine Listen- statt Tabellenansicht handelt - passend zum
-  Inhalt (Titel + Beschreibung statt vieler kurzer Spaltenwerte).
-- Ungetestet gegen eine echte Home-Assistant-Instanz - vor dem produktiven
-  Einsatz bitte einmal gegenprüfen, insbesondere die persistent_notification-
-  Anbindung.
-- Der Schnellversand ist bisher nur mit simulierten Aufrufen geprüft. Ob
-  „Dringend“ auf dem eigenen Gerät wirklich den Lautlos-Modus umgeht, hängt von
-  Android-/iOS-Einstellungen ab (Kanal-Berechtigungen, Nicht stören, kritische
-  Hinweise) und sollte einmal mit dem eigenen Smartphone ausprobiert werden.
-- Scripts und Blueprints werden nur **angelegt**. Bearbeiten und Löschen
-  geschieht weiterhin in Home Assistant selbst (Script-Editor bzw.
-  *Blueprints*); eine Liste der bereits erstellten Einträge zeigt die Karte
-  noch nicht.
-- Der Automations-Blueprint hat genau einen Trigger (Zustandswechsel einer
-  Entität). Komplexere Auslöser baust du in Home Assistant und rufst darin
-  `notification_center.send` auf.
-- Home Assistant bietet keine Frontend-Schnittstelle zum Schreiben von
-  Blueprints; die Integration übernimmt das serverseitig. Die erzeugten
-  Dateien wurden gegen die Blueprint-Schemas von Home Assistant 2025.1
-  geprüft, aber noch nicht in einer laufenden Instanz.
+- **Nicht an einer echten Home-Assistant-Instanz und nicht mit echten Smartphones getestet.** Geprüft sind: die Hub-Logik gegen einen simulierten Event-Bus (14 Tests), die Karte im Headless-Browser mit Testdaten (alle Tabs, Popup, Zahnrad, fünf Sprachen, Editor) sowie Syntax und JSON. Das Zusammenspiel mit der echten Home-Assistant-Oberfläche ist **ungeprüft**.
+- **Zusammenspiel mit den Schwester-Integrationen ungeprüft:** Es wurde nur gegen simulierte Ereignisse getestet, nicht gegen echte Fritz!Box-, Zigbee2MQTT- oder Matter-Daten.
+- Ob „Dringend“ auf deinem Gerät den Lautlos-Modus wirklich umgeht, hängt von Android-/iOS-Einstellungen ab (Kanal-Berechtigungen, Nicht stören, kritische Hinweise). Bitte mit der Testmeldung ausprobieren.
+- E-Mail-Profile lassen sich für die Zustellung von Meldungen technisch wählen, E-Mail gehört aber nicht zum geprüften Umfang von 1.0.0.
+- Nicht enthalten: Stummschalten einzelner Geräte, Zeitplan für den Lautlos-Modus.
+- Persistente Benachrichtigungen liest die Integration defensiv aus einem internen Speicher von Home Assistant; ändert sich das, bleibt die Kategorie leer.
+- Die Übersetzungen (Niederländisch, Französisch, Spanisch) sind maschinell erstellt und nicht von Muttersprachlern geprüft - Korrekturen willkommen.
+- Scripts und Blueprints werden nur angelegt; bearbeiten und löschen geschieht in Home Assistant.
 
-## Icon
+## Fehlerbehebung
 
-Das Icon liegt unter `custom_components/notification_center/brand/` (`icon.png`
-256×256, `icon@2x.png` 512×512). Seit Home Assistant 2026.3 reicht das aus -
-ein lokaler `brand/`-Ordner direkt in der Integration wird automatisch erkannt
-und hat Vorrang vor der zentralen `home-assistant/brands`-Datenbank. Eine
-separate Einreichung per Pull Request ist damit nicht mehr nötig; einzig auf
-älteren Home-Assistant-Versionen (vor 2026.3) greift das Icon nicht und es
-erscheint stattdessen ein Platzhalter.
+| Problem | Lösung |
+|---|---|
+| Karte zeigt „Custom element doesn’t exist“ | Browser-Cache leeren (Strg+F5); im YAML-Modus die Ressource `/notification_center_files/notification-center-card.js` (Typ `module`) von Hand eintragen. |
+| Tab „Meldungen“ fehlt | Der Sensor `sensor.notification_center_meldungen` existiert erst nach dem Neustart mit 1.0.0. Eintrag `entities.messages` prüfen. |
+| Keine Meldungen aus einer Integration | Zahnrad → Quellen: ist die Quelle angemeldet? Die Integration muss in Version 1.0.0 vorliegen und „Meldungen senden“ eingeschaltet haben. |
+| Kein Push | Ist der Lautlos-Modus an? Ist für die Dringlichkeit ein Profil gewählt (Zahnrad → Optionen)? Mit der Testmeldung prüfen. |
+| Update-Prüfung schlägt fehl | Home Assistant braucht Internetzugang zu `api.github.com`; die Karte läuft trotzdem normal. |
 
-Die README-Vorschau oben verlinkt das Icon absolut über
-`raw.githubusercontent.com` statt über einen relativen Pfad - HACS rendert
-das README zwar, löst relative Bildpfade dabei aber nicht zuverlässig auf,
-sodass das Icon dort sonst als kaputtes Bild erscheint. Passe die URL an,
-falls Repository-Name oder Branch abweichen.
+## Datei-Integrität
+
+Jede `.py`, `.js` und `.yaml` beginnt mit einem SHA256-Header (Inhalt ab Zeile 2). Prüfen mit `tail -n +2 datei.py | sha256sum`. Die Prüfsummen der JSON-Dateien stehen in [docs/datei-integritaet.md](docs/datei-integritaet.md).
+
+## Versionshistorie
+
+### 1.0.0
+
+- Neu: **Meldungen** der Integrationen (Schnittstelle Schema 1: register, report, sync, ping), Dringlichkeit, Verlauf, Quittieren, Quellenübersicht
+- Neu: **Lautlos-Modus**, „Kritische trotzdem zustellen“, **Zustellung je Dringlichkeit**, Bündeln, Testmeldung
+- Neu: Zahnrad-Tab mit App-Version, Quellen, Optionen, Wartung, Ereignissen; Update-Hinweis über GitHub
+- Neu: Statistik-Chips, Sortierung, Banner, Toast, Popup mit Akkordeon, `default_tab`, `zoom`, `read_only`, `max_rows`
+- Neu: **fünf Sprachen** in Karte, Optionen und Services; Logo (`logo.png`), Diagnose-Download, `LICENSE`
+- Geändert: Der Tab „Meldungen“ ist der Standard-Starttab (über `default_tab` änderbar)
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
+
+Alle Versionen: [docs/versionshistorie.md](docs/versionshistorie.md)
 
 ## Lizenz
 

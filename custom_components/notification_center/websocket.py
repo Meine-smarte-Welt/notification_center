@@ -1,3 +1,4 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): b838b870cf31cc512cfc8ce362a17358986cb0cb207b3e847350e762cde854dd
 """Websocket-Befehle des Notification Center (nur für Administratoren).
 
 ``notification_center/create_blueprint`` schreibt einen aus der Karte
@@ -35,12 +36,38 @@ from .builders import (
     build_blueprint,
     build_script,
 )
-from .const import URGENCIES, URGENCY_NORMAL
+from .const import (
+    CONF_CRITICAL_BYPASS,
+    CONF_DELIVERY,
+    CONF_RECIPIENTS,
+    CONF_SILENT,
+    DOMAIN,
+    SEVERITIES,
+    URGENCIES,
+    URGENCY_NORMAL,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
 WS_CREATE_BLUEPRINT = "notification_center/create_blueprint"
 WS_BUILD_SCRIPT = "notification_center/build_script"
+WS_ACK = "notification_center/ack"
+WS_ACK_ALL = "notification_center/ack_all"
+WS_CLEAR_HISTORY = "notification_center/clear_history"
+WS_SET_SETTING = "notification_center/set_setting"
+WS_SET_DELIVERY = "notification_center/set_delivery"
+WS_SEND_TEST = "notification_center/send_test"
+WS_CHECK_UPDATE = "notification_center/check_update"
+
+_SETTING_KEYS = {"silent_mode": CONF_SILENT, "critical_bypass": CONF_CRITICAL_BYPASS}
+
+
+def _get_hub(hass: HomeAssistant):
+    """Hub des geladenen Config Entries oder ``None``."""
+    for entry in hass.config_entries.async_entries(DOMAIN):
+        if getattr(entry, "runtime_data", None) is not None:
+            return entry, entry.runtime_data
+    return None, None
 
 
 def _to_ha_inputs(value: Any) -> Any:
@@ -179,7 +206,125 @@ def ws_build_script(
     connection.send_result(msg["id"], {"id": script_id, "config": config})
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_ACK, vol.Required("message"): str})
+@callback
+def ws_ack(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Eine Meldung quittieren (wandert in den Verlauf)."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    connection.send_result(msg["id"], {"acknowledged": hub.async_ack(msg["message"])})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_ACK_ALL})
+@callback
+def ws_ack_all(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    connection.send_result(msg["id"], {"count": hub.async_ack_all()})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_CLEAR_HISTORY})
+@callback
+def ws_clear_history(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hub.async_clear_history()
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_SET_SETTING,
+        vol.Required("setting"): vol.In(list(_SETTING_KEYS)),
+        vol.Required("enabled"): bool,
+    }
+)
+@callback
+def ws_set_setting(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Lautlos-Modus bzw. „Kritische trotzdem zustellen“ umschalten."""
+    entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, _SETTING_KEYS[msg["setting"]]: msg["enabled"]}
+    )
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_SET_DELIVERY,
+        vol.Required("severity"): vol.In(SEVERITIES),
+        vol.Required("recipients"): [str],
+    }
+)
+@callback
+def ws_set_delivery(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Push-Empfänger je Dringlichkeit festlegen."""
+    entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    known = {r["id"] for r in entry.options.get(CONF_RECIPIENTS, [])}
+    chosen = [rid for rid in msg["recipients"] if rid in known]
+    # Bisherige Auswahl aller Stufen festschreiben, damit nur die geänderte Stufe abweicht.
+    delivery = {sev: hub.delivery_for(sev) for sev in SEVERITIES}
+    delivery[msg["severity"]] = chosen
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, CONF_DELIVERY: delivery}
+    )
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): WS_SEND_TEST, vol.Optional("severity", default="info"): vol.In(SEVERITIES)}
+)
+@callback
+def ws_send_test(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hub.async_send_test(msg["severity"])
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_CHECK_UPDATE})
+@websocket_api.async_response
+async def ws_check_update(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Jetzt auf GitHub nach einer neuen Version suchen."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    connection.send_result(msg["id"], await hub.async_check_update())
+
+
 def async_register_websocket(hass: HomeAssistant) -> None:
     """Befehle registrieren (einmalig)."""
-    websocket_api.async_register_command(hass, ws_create_blueprint)
-    websocket_api.async_register_command(hass, ws_build_script)
+    for command in (
+        ws_create_blueprint,
+        ws_build_script,
+        ws_ack,
+        ws_ack_all,
+        ws_clear_history,
+        ws_set_setting,
+        ws_set_delivery,
+        ws_send_test,
+        ws_check_update,
+    ):
+        websocket_api.async_register_command(hass, command)

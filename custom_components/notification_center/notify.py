@@ -1,3 +1,4 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 905aa470bccb7b3966e1d0b73aa54fa124433be12586893be8bbc6b1dae5d9aa
 """Nachrichten-Payloads für den Schnellversand (reine Logik, ohne HA-Abhängigkeit).
 
 Bewusst als eigenes Modul ausgelagert, damit sich der Aufbau der Payloads

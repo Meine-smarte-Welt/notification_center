@@ -1,0 +1,129 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar Notification Center",
+        "description": "Crea cinco sensores: mensajes, notificaciones, actualizaciones, reparaciones y perfiles. No se necesitan credenciales y solo se puede configurar una instancia. Los perfiles de destinatarios, el modo silencioso y la entrega se ajustan después en «Configurar»."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Solo se permite una instancia."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Notification Center {version}",
+        "description": "Versión {version}. {update_info}\n\nUn perfil agrupa un nombre y un destino de notificación. Si cambias de teléfono, solo cambia el destino del perfil: la tarjeta y las automatizaciones siguen igual.",
+        "menu_options": {
+          "add_recipient": "Añadir perfil",
+          "edit_recipient": "Editar perfil",
+          "remove_recipient": "Eliminar perfiles",
+          "settings": "Modo silencioso e historial",
+          "delivery": "Entrega por urgencia"
+        }
+      },
+      "add_recipient": {
+        "title": "Añadir perfil",
+        "description": "El destino es un servicio del dominio «notify», p. ej. mobile_app_pixel_9 (teléfono) o el nombre de tu servicio de correo.",
+        "data": {
+          "name": "Nombre",
+          "type": "Tipo",
+          "target": "Destino (servicio notify)"
+        }
+      },
+      "edit_recipient": {
+        "title": "Editar perfil",
+        "data": {
+          "recipient": "Perfil"
+        }
+      },
+      "edit_recipient_form": {
+        "title": "Editar perfil «{name}»",
+        "data": {
+          "name": "Nombre",
+          "type": "Tipo",
+          "target": "Destino (servicio notify)"
+        }
+      },
+      "remove_recipient": {
+        "title": "Eliminar perfiles",
+        "data": {
+          "recipients": "Perfiles"
+        }
+      },
+      "settings": {
+        "title": "Modo silencioso e historial",
+        "description": "En modo silencioso no se envían notificaciones push; los mensajes siguen visibles en la tarjeta y el widget. Los críticos pueden saltárselo.",
+        "data": {
+          "silent_mode": "Modo silencioso (sin notificaciones push)",
+          "critical_bypass": "Entregar igualmente los críticos",
+          "history_days": "Conservar historial (días)",
+          "history_max": "Historial: como máximo (entradas)"
+        }
+      },
+      "delivery": {
+        "title": "Entrega por urgencia",
+        "description": "Elige qué perfiles reciben una notificación push por cada urgencia. Sin elección propia, los mensajes críticos y las advertencias se envían a todos los perfiles de teléfono.",
+        "data": {
+          "critical": "Crítico",
+          "warning": "Advertencia",
+          "info": "Info",
+          "ok": "Correcto"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Introduce un nombre.",
+      "name_exists": "Ya existe un perfil con este nombre.",
+      "target_required": "Indica un destino."
+    },
+    "abort": {
+      "unknown_recipient": "Este perfil ya no existe."
+    }
+  },
+  "selector": {
+    "recipient_type": {
+      "options": {
+        "push": "Teléfono (push)",
+        "email": "Correo electrónico"
+      }
+    },
+    "urgency": {
+      "options": {
+        "normal": "Normal",
+        "high": "Alta",
+        "critical": "Urgente (salta el modo silencioso)"
+      }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Enviar mensaje",
+      "description": "Envía un mensaje a un perfil de destinatario. Cambiar de teléfono solo requiere modificar el perfil.",
+      "fields": {
+        "recipient": {
+          "name": "Destinatario",
+          "description": "Nombre o ID de un perfil de destinatario."
+        },
+        "message": {
+          "name": "Mensaje",
+          "description": "El texto del mensaje."
+        },
+        "title": {
+          "name": "Título",
+          "description": "Título opcional (asunto en un correo)."
+        },
+        "urgency": {
+          "name": "Urgencia",
+          "description": "Normal, alta o urgente. «Urgente» salta el modo silencioso en los teléfonos."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_recipient": {
+      "message": "El perfil de destinatario «{recipient}» no existe. Añade perfiles en Ajustes → Dispositivos y servicios → Notification Center → Configurar."
+    }
+  }
+}

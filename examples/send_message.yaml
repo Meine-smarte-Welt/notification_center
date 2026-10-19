@@ -1,0 +1,8 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 892d234a514cb065e684240169710b575c6208f7bf34aad480df06701b93e711
+# Beispiel: Nachricht an ein Empfänger-Profil schicken
+action: notification_center.send
+data:
+  recipient: Thorsten Handy     # Name oder ID des Profils
+  title: Waschmaschine
+  message: Die Wäsche ist fertig.
+  urgency: normal               # normal | high | critical

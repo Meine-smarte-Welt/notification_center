@@ -1,3 +1,4 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 19af7b9983240d2929c5794d66cb6216f9dfa95eede73449203b6e5120f208d8
 """Sensor-Plattform der Benachrichtigungszentrale.
 
 Legt drei Sensoren an. Jeder Sensor zählt seine Kategorie als Zustand und
@@ -38,10 +39,12 @@ from .const import (
     CONF_RECIPIENTS,
     DOMAIN,
     RECIPIENT_EMAIL,
+    SENSOR_MESSAGES,
     SENSOR_NOTIFICATIONS,
     SENSOR_PROFILES,
     SENSOR_REPAIRS,
     SENSOR_UPDATES,
+    SIGNAL_UPDATED,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,9 +59,10 @@ REPAIRS_REGISTRY_EVENT = "repairs_issue_registry_updated"
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    """Die drei Sensoren anlegen."""
+    """Die Sensoren anlegen."""
     async_add_entities(
         [
+            MessagesSensor(entry),
             NotificationsSensor(entry),
             UpdatesSensor(entry),
             RepairsSensor(entry),
@@ -73,6 +77,10 @@ class _BaseSummarySensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_native_unit_of_measurement = "Einträge"
     _attr_should_poll = False
+    # Große Listen gehören nicht in die Langzeitdatenbank (Grenze 16 KB je Zustand).
+    _unrecorded_attributes = frozenset(
+        {"items", "summary", "history", "sources", "settings", "app", "log"}
+    )
 
     def __init__(self, entry: ConfigEntry, key: str, name: str, icon: str) -> None:
         self._entry = entry
@@ -105,6 +113,37 @@ class _BaseSummarySensor(SensorEntity):
         if len(self._items) == 1:
             return first_title
         return f"{first_title} (+{len(self._items) - 1} weitere)"
+
+
+class MessagesSensor(_BaseSummarySensor):
+    """Meldungen der angebundenen Integrationen (nach Dringlichkeit sortiert).
+
+    Trägt zusätzlich Verlauf, Quellenübersicht, Einstellungen und
+    Versionsinformationen für die Karte.
+    """
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        super().__init__(entry, SENSOR_MESSAGES, "Meldungen", "mdi:message-badge-outline")
+
+    async def async_added_to_hass(self) -> None:
+        self._hub = self._entry.runtime_data
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_UPDATED, self._async_hub_changed)
+        )
+        self._items = self._hub.items()
+
+    @callback
+    def _async_hub_changed(self) -> None:
+        self._items = self._hub.items()
+        self.async_write_ha_state()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "items": self._items,
+            "summary": self._build_summary(),
+            **self._hub.attributes(),
+        }
 
 
 class NotificationsSensor(_BaseSummarySensor):

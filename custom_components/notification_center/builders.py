@@ -1,3 +1,4 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 564caf64ac329d4bab278cfbfb35b963a0f12cde8ea73c5ee1391bcfa97644f8
 """Generatoren für Scripts und Blueprints (reine Logik, ohne HA-Abhängigkeit).
 
 Die Karte baut aus ein paar Eingaben eine fertige Konfiguration:

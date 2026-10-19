@@ -1,0 +1,129 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Notification Center instellen",
+        "description": "Maakt vijf sensoren aan: meldingen, notificaties, updates, reparaties en profielen. Er zijn geen inloggegevens nodig, er kan maar één instantie worden ingesteld. Ontvangersprofielen, stille modus en bezorging stel je daarna in onder „Configureren”."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is maar één instantie toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Notification Center {version}",
+        "description": "Versie {version}. {update_info}\n\nEen profiel bundelt een naam en een meldingsdoel. Wissel je van telefoon, dan verander je alleen het doel van het profiel - kaart en automatiseringen blijven ongewijzigd.",
+        "menu_options": {
+          "add_recipient": "Profiel toevoegen",
+          "edit_recipient": "Profiel bewerken",
+          "remove_recipient": "Profielen verwijderen",
+          "settings": "Stille modus en geschiedenis",
+          "delivery": "Bezorging per urgentie"
+        }
+      },
+      "add_recipient": {
+        "title": "Profiel toevoegen",
+        "description": "Het doel is een dienst van het domein „notify”, bijv. mobile_app_pixel_9 (telefoon) of de naam van je e-maildienst.",
+        "data": {
+          "name": "Naam",
+          "type": "Soort",
+          "target": "Doel (notify-dienst)"
+        }
+      },
+      "edit_recipient": {
+        "title": "Profiel bewerken",
+        "data": {
+          "recipient": "Profiel"
+        }
+      },
+      "edit_recipient_form": {
+        "title": "Profiel „{name}” bewerken",
+        "data": {
+          "name": "Naam",
+          "type": "Soort",
+          "target": "Doel (notify-dienst)"
+        }
+      },
+      "remove_recipient": {
+        "title": "Profielen verwijderen",
+        "data": {
+          "recipients": "Profielen"
+        }
+      },
+      "settings": {
+        "title": "Stille modus en geschiedenis",
+        "description": "In de stille modus worden geen pushberichten verstuurd; meldingen blijven zichtbaar in kaart en widget. Kritieke meldingen kunnen dit omzeilen.",
+        "data": {
+          "silent_mode": "Stille modus (geen pushberichten)",
+          "critical_bypass": "Kritieke toch bezorgen",
+          "history_days": "Geschiedenis bewaren (dagen)",
+          "history_max": "Geschiedenis: maximaal (items)"
+        }
+      },
+      "delivery": {
+        "title": "Bezorging per urgentie",
+        "description": "Kies per urgentie welke profielen een pushbericht krijgen. Zonder eigen keuze krijgen kritieke meldingen en waarschuwingen push op alle telefoonprofielen.",
+        "data": {
+          "critical": "Kritiek",
+          "warning": "Waarschuwing",
+          "info": "Info",
+          "ok": "In orde"
+        }
+      }
+    },
+    "error": {
+      "name_required": "Voer een naam in.",
+      "name_exists": "Er bestaat al een profiel met deze naam.",
+      "target_required": "Geef een doel op."
+    },
+    "abort": {
+      "unknown_recipient": "Dit profiel bestaat niet meer."
+    }
+  },
+  "selector": {
+    "recipient_type": {
+      "options": {
+        "push": "Telefoon (push)",
+        "email": "E-mail"
+      }
+    },
+    "urgency": {
+      "options": {
+        "normal": "Normaal",
+        "high": "Hoog",
+        "critical": "Dringend (omzeilt stille modus)"
+      }
+    }
+  },
+  "services": {
+    "send": {
+      "name": "Bericht versturen",
+      "description": "Verstuurt een bericht naar een ontvangersprofiel. Een nieuwe telefoon vraagt alleen een wijziging van het profiel.",
+      "fields": {
+        "recipient": {
+          "name": "Ontvanger",
+          "description": "Naam of ID van een ontvangersprofiel."
+        },
+        "message": {
+          "name": "Bericht",
+          "description": "De berichttekst."
+        },
+        "title": {
+          "name": "Titel",
+          "description": "Optionele titel (bij e-mail het onderwerp)."
+        },
+        "urgency": {
+          "name": "Urgentie",
+          "description": "Normaal, hoog of dringend. „Dringend” omzeilt op telefoons de stille modus."
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "unknown_recipient": {
+      "message": "Het ontvangersprofiel „{recipient}” bestaat niet. Maak profielen aan onder Instellingen → Apparaten en diensten → Notification Center → Configureren."
+    }
+  }
+}

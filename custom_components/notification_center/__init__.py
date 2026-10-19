@@ -1,7 +1,9 @@
-"""Die Benachrichtigungszentrale-Integration.
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): ba042c88b05881fa07252abda680140512d61420fdde131e798a653b2d0bf334
+"""Die Notification-Center-Integration.
 
-Bündelt drei zusammenfassende Sensoren (Benachrichtigungen, Updates,
-Reparaturen) und liefert die passende Dashboard-Karte gleich mit aus -
+Bündelt zusammenfassende Sensoren (Meldungen der Integrationen,
+Benachrichtigungen, Updates, Reparaturen) und liefert die passende
+Dashboard-Karte gleich mit aus -
 analog zu den Schwester-Integrationen FRITZ!Box Anrufe und FRITZ!Box
 Netzwerk. Eine separate Installation der Karte über HACS oder eine manuell
 eingetragene Lovelace-Ressource ist nicht nötig.
@@ -18,6 +20,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
 try:
     from homeassistant.components.lovelace.const import LOVELACE_DATA
@@ -31,9 +34,11 @@ from .const import (
     CONF_RECIPIENTS,
     DOMAIN,
     SERVICE_SEND,
+    SIGNAL_UPDATED,
     URGENCIES,
     URGENCY_NORMAL,
 )
+from .hub import NotificationHub
 from .notify import build_payload
 from .websocket import async_register_websocket
 
@@ -53,23 +58,40 @@ SEND_SCHEMA = vol.Schema(
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up der Integration aus einem Config Entry."""
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = {}
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    domain_data[entry.entry_id] = {
+        "recipients": [dict(r) for r in entry.options.get(CONF_RECIPIENTS, [])]
+    }
+
+    hub = NotificationHub(hass, entry)
+    await hub.async_load()
+    entry.runtime_data = hub
 
     await _async_register_card(hass)
     _async_register_services(hass)
     _async_register_websocket_once(hass)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    hub.async_start()
 
-    # Änderungen an den Empfänger-Profilen (Optionen) -> Integration neu laden,
-    # damit das Profil-Sensor-Attribut und die Karte sofort aktuell sind.
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Optionen (Empfänger-Profile) wurden geändert."""
-    await hass.config_entries.async_reload(entry.entry_id)
+    """Optionen wurden geändert.
+
+    Nur bei geänderten Empfänger-Profilen wird neu geladen (Profil-Sensor).
+    Schalter für Lautlos-Modus, Zustellung und Verlauf wirken sofort, ohne
+    dass die Meldungen neu aufgebaut werden müssen.
+    """
+    stored = hass.data[DOMAIN][entry.entry_id]
+    current = [dict(r) for r in entry.options.get(CONF_RECIPIENTS, [])]
+    if current != stored["recipients"]:
+        await hass.config_entries.async_reload(entry.entry_id)
+        return
+    entry.runtime_data._prune_history()
+    async_dispatcher_send(hass, SIGNAL_UPDATED)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

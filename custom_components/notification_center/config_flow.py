@@ -1,3 +1,4 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 86f95912ea6207105a76d68767588e85ce746b15183c1d2c112e8c280ae20e36
 """Config Flow für das Notification Center.
 
 Es gibt keine Zugangsdaten zu erfassen - die Integration liest ausschliesslich
@@ -5,7 +6,7 @@ Daten, die bereits in dieser Home-Assistant-Instanz vorhanden sind
 (persistent_notification, update.*-Entities, Repairs). Der Flow fragt daher
 nur einmal nach Bestätigung und lässt genau eine Instanz zu.
 
-Seit 0.0.7 gibt es zusätzlich einen Options-Flow für die Empfänger-Profile
+Seit 0.0.7 gibt es zusätzlich einen Options-Flow für die Empfänger-Profile (ab 1.0.0 auch Lautlos-Modus, Zustellung je Dringlichkeit und Verlauf)
 (Einstellungen > Geräte & Dienste > Notification Center > Konfigurieren).
 Ein Profil bündelt Name, Art (Smartphone/E-Mail) und das ``notify``-Ziel.
 Automationen und die Karte sprechen nur den Profilnamen an - wechselt das
@@ -28,8 +29,23 @@ from homeassistant.helpers.selector import (
 )
 from homeassistant.util import slugify
 
-from .const import CONF_RECIPIENTS, DOMAIN, RECIPIENT_PUSH, RECIPIENT_TYPES
+from .const import (
+    CONF_CRITICAL_BYPASS,
+    CONF_DELIVERY,
+    CONF_HISTORY_DAYS,
+    CONF_HISTORY_MAX,
+    CONF_RECIPIENTS,
+    CONF_SILENT,
+    DEFAULT_HISTORY_DAYS,
+    DEFAULT_HISTORY_MAX,
+    DOMAIN,
+    RECIPIENT_PUSH,
+    RECIPIENT_TYPES,
+    SEVERITIES,
+    VERSION,
+)
 from .notify import normalize_target
+from .update_check import describe
 
 # Dienste der notify-Domain, die kein Empfänger-Ziel sind.
 _NOTIFY_NON_TARGETS = {"send_message", "persistent_notification"}
@@ -149,7 +165,82 @@ class NotificationCenterOptionsFlow(config_entries.OptionsFlow):
         menu = ["add_recipient"]
         if self._recipients:
             menu += ["edit_recipient", "remove_recipient"]
-        return self.async_show_menu(step_id="init", menu_options=menu)
+        menu += ["settings"]
+        if self._recipients:
+            menu += ["delivery"]
+        hub = getattr(self.config_entry, "runtime_data", None)
+        info = describe(hub.update_info, hub.language) if hub else ""
+        return self.async_show_menu(
+            step_id="init",
+            menu_options=menu,
+            description_placeholders={"version": VERSION, "update_info": info},
+        )
+
+    async def async_step_settings(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Lautlos-Modus und Verlauf."""
+        options = self.config_entry.options
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={**options, **user_input}
+            )
+        return self.async_show_form(
+            step_id="settings",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_SILENT, default=options.get(CONF_SILENT, False)
+                    ): bool,
+                    vol.Required(
+                        CONF_CRITICAL_BYPASS,
+                        default=options.get(CONF_CRITICAL_BYPASS, True),
+                    ): bool,
+                    vol.Required(
+                        CONF_HISTORY_DAYS,
+                        default=options.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+                    vol.Required(
+                        CONF_HISTORY_MAX,
+                        default=options.get(CONF_HISTORY_MAX, DEFAULT_HISTORY_MAX),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=10, max=1000)),
+                }
+            ),
+        )
+
+    async def async_step_delivery(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Push-Empfänger je Dringlichkeit."""
+        options = self.config_entry.options
+        hub = getattr(self.config_entry, "runtime_data", None)
+        if user_input is not None:
+            return self.async_create_entry(
+                title="",
+                data={
+                    **options,
+                    CONF_DELIVERY: {sev: user_input.get(sev, []) for sev in SEVERITIES},
+                },
+            )
+        selector = SelectSelector(
+            SelectSelectorConfig(
+                options=self._recipient_options(),
+                multiple=True,
+                mode=SelectSelectorMode.LIST,
+            )
+        )
+        return self.async_show_form(
+            step_id="delivery",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        sev,
+                        default=hub.delivery_for(sev) if hub else [],
+                    ): selector
+                    for sev in SEVERITIES
+                }
+            ),
+        )
 
     async def async_step_add_recipient(
         self, user_input: dict[str, Any] | None = None

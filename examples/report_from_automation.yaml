@@ -1,0 +1,20 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 330f7e7664af3e3de9b4e999edcd5421d6a1e4fd19e75f4b289ab8667d5380a0
+# Beispiel: Eine eigene Automation meldet etwas ans Notification Center
+# (Schnittstelle Schema 1). Sinnvoll vor allem für Integrations-Entwickler;
+# die Meldungsart muss vorher per notification_center_register angemeldet sein.
+alias: Meldung an das Notification Center senden (Beispiel)
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.haustuer
+    to: "on"
+actions:
+  - event: notification_center_report
+    event_data:
+      schema: 1
+      source: meine_integration
+      entry_id: beispiel
+      type: door_open
+      key: haustuer
+      state: active
+      subject: { id: haustuer, name: Haustür, kind: device }
+      placeholders: { name: Haustür }

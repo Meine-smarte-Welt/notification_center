@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Set up Notification Center",
-        "description": "Creates four sensors: notifications, updates, repairs and profiles. No credentials are needed, only one instance can be set up. Recipient profiles for the Send tab are added afterwards under “Configure”."
+        "description": "Creates five sensors: messages, notifications, updates, repairs and profiles. No credentials are needed, only one instance can be set up. Recipient profiles, silent mode and delivery are set afterwards under “Configure”."
       }
     },
     "abort": {
@@ -13,12 +13,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Recipient profiles",
-        "description": "A profile bundles a name and a notification target. When you switch phones, only the profile's target changes - cards and automations stay untouched.",
+        "title": "Notification Center {version}",
+        "description": "Version {version}. {update_info}\n\nA profile bundles a name and a notification target. When you switch phones, only the profile's target changes - cards and automations stay untouched.",
         "menu_options": {
           "add_recipient": "Add profile",
           "edit_recipient": "Edit profile",
-          "remove_recipient": "Remove profiles"
+          "remove_recipient": "Remove profiles",
+          "settings": "Silent mode and history",
+          "delivery": "Delivery by urgency"
         }
       },
       "add_recipient": {
@@ -48,6 +50,26 @@
         "title": "Remove profiles",
         "data": {
           "recipients": "Profiles"
+        }
+      },
+      "settings": {
+        "title": "Silent mode and history",
+        "description": "In silent mode no push messages are sent; messages stay visible in the card and widget. Critical messages can bypass it.",
+        "data": {
+          "silent_mode": "Silent mode (no push messages)",
+          "critical_bypass": "Still deliver critical messages",
+          "history_days": "Keep history (days)",
+          "history_max": "History: at most (entries)"
+        }
+      },
+      "delivery": {
+        "title": "Delivery by urgency",
+        "description": "Choose which profiles receive a push message for each urgency. Without a choice, critical messages and warnings are pushed to all phone profiles.",
+        "data": {
+          "critical": "Critical",
+          "warning": "Warning",
+          "info": "Info",
+          "ok": "OK"
         }
       }
     },

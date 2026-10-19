@@ -1,0 +1,27 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): ab42daac2cdd8c950c348adeaae9c6ce80532f2f5693af93f6d621e671e8a303
+# Beispiel: Dashboard-Karte (Notification Center 1.0.0)
+type: custom:notification-center-card
+title: Notification Center
+show_title: true
+icon: mdi:bell-badge-outline
+default_tab: messages        # messages | notifications | updates | repairs | send | settings
+default_sort: default        # default | newest | oldest | title
+show_messages: true
+show_notifications: true
+show_updates: true
+show_repairs: true
+show_send: true
+show_settings: true
+show_search: true
+show_filter_bar: true
+show_stats: true
+show_builder: true
+read_only: false
+zoom: 100
+max_rows: 0
+entities:
+  messages: sensor.notification_center_meldungen
+  notifications: sensor.notification_center_benachrichtigungen
+  updates: sensor.notification_center_updates
+  repairs: sensor.notification_center_reparaturen
+  recipients: sensor.notification_center_profile

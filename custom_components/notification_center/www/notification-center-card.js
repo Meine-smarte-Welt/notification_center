@@ -1,4 +1,4 @@
-// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 31feba26b7be340f4aad10c10c6fec03fe310153e94275278f3c3cef649be211
+// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 4df153ab9af182ee941ee6bef10b2ac5eb9881b678e66220dd2711734cb09c5d
 /**
  * notification-center-card
  *
@@ -21,7 +21,7 @@
  * Der Profil-Sensor (entities.recipients) liefert die Empfänger-Profile.
  */
 
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.1.1b2";
 const DEFAULT_TITLE = "Notification Center";
 const DEFAULT_ICON = "mdi:bell-badge-outline";
 const DEFAULT_MESSAGES_ENTITY = "sensor.notification_center_meldungen";
@@ -177,7 +177,62 @@ const I18N = {
     "w_more": "weitere",
     "w_done": "Alles erledigt",
     "w_all": "Alle zusammen",
-    "w_none_messages": "Keine Meldungen"
+    "w_none_messages": "Keine Meldungen",
+    "pop_card": "Karte der Integration",
+    "pop_card_loading": "Karte wird geladen …",
+    "pop_card_error": "Die Karte konnte nicht geladen werden. Prüfe die Kartenkonfiguration unter „Popup-Karte“.",
+    "pop_open_integration": "Integration öffnen",
+    "sev_default": "Vorgabe",
+    "sev_map_title": "Stufe für diese Meldungsart festlegen",
+    "card_title": "Popup-Karte",
+    "card_hint": "Lovelace-Karte als JSON, die im Popup einer Meldung dieser Quelle erscheint, z. B. {\"type\":\"markdown\",\"content\":\"Hallo\"}. Leer lassen und speichern entfernt sie.",
+    "card_save": "Karte speichern",
+    "card_remove": "Eigene Karte entfernen",
+    "card_invalid": "Kein gültiges JSON.",
+    "set_imports": "Importe",
+    "imp_hint": "Regeln machen aus beliebigen Entitäten Meldungen, z. B. den Zähler von Watchman.",
+    "imp_none": "Noch keine Import-Regeln.",
+    "imp_new": "Neue Regel",
+    "imp_edit": "Bearbeiten",
+    "imp_name": "Name (erscheint als Quelle)",
+    "imp_entity": "Entität",
+    "imp_mode": "Meldung aktiv, wenn …",
+    "imp_mode_count": "Zustand eine Zahl größer 0 ist",
+    "imp_mode_states": "Zustand einer der Werte ist",
+    "imp_states": "Zustände (mit Komma getrennt)",
+    "imp_severity": "Stufe",
+    "imp_title": "Titel (Vorlage, optional)",
+    "imp_message": "Nachricht (Vorlage, optional)",
+    "imp_tpl_hint": "Vorlagen wie in Home Assistant: {{ state }}, {{ name }}, {{ attrs.xyz }}. Leer = Name bzw. Zustand.",
+    "imp_domain": "Integration für das Logo (z. B. watchman, optional)",
+    "imp_save": "Regel speichern",
+    "imp_cancel": "Abbrechen",
+    "imp_watchman": "Watchman-Vorlage",
+    "imp_watchman_title": "Watchman: fehlende Entitäten",
+    "imp_watchman_message": "{{ state }} fehlende Entitäten gefunden",
+    "imp_service_hint": "Berichte als Text (z. B. von Watchman) kommen über den Service notification_center.report, siehe README.",
+    "set_inbound": "Eingänge",
+    "inb_hint": "Ordne Ereignisse oder Aufrufe einer anderen Integration selbst zu: welches Feld wird Titel, Text und Stufe? So lässt sich jede Integration anbinden, die ein Ereignis auslöst oder eine Aktion aufruft.",
+    "inb_none": "Noch keine Eingangs-Regeln.",
+    "inb_trigger": "Auslöser",
+    "inb_trigger_event": "Ereignis",
+    "inb_trigger_service": "Service-Aufruf",
+    "inb_event_name": "Name des Ereignisses",
+    "inb_service_hint": "Die andere Integration ruft die Aktion notification_center.inbound mit dem Feld rule auf. Der genaue Aufruf steht nach dem Speichern in der Liste.",
+    "inb_sev_field": "Stufe aus Feld (Vorlage, optional)",
+    "inb_sev_field_hint": "Z. B. {{ data.level }}. Leer = immer die feste Stufe oben.",
+    "inb_sev_map": "Wertetabelle (Wert=Stufe)",
+    "inb_sev_map_hint": "Z. B. error=critical, warning=warning, ok=ok. Stufen: critical, warning, info, ok. Andere Werte bekommen die feste Stufe.",
+    "inb_key": "Schlüssel (Vorlage, optional)",
+    "inb_key_hint": "Gleicher Schlüssel = dieselbe Meldung wird aktualisiert. Leer = eine Meldung pro Regel.",
+    "inb_resolve": "Schließen, wenn (Vorlage, optional)",
+    "inb_resolve_hint": "Z. B. {{ data.count | int == 0 }}. Ergibt die Vorlage wahr, wird die Meldung erledigt.",
+    "inb_tpl_hint": "In den Vorlagen stehen die empfangenen Felder als data zur Verfügung, z. B. {{ data.message }}. Ohne Titel/Text erscheint der Regelname bzw. der rohe Inhalt.",
+    "inb_last": "Zuletzt empfangen: {time}",
+    "inb_no_sample": "Noch nichts empfangen. Sobald die Integration etwas schickt, siehst du hier die Felder.",
+    "inb_sample": "Letzter Inhalt",
+    "inb_call_hint": "So ruft die andere Integration das Notification Center auf:",
+    "inb_event_hint": "Die Regel lauscht auf das Ereignis {event}."
   },
   "en": {
     "tab_messages": "Messages",
@@ -329,7 +384,62 @@ const I18N = {
     "w_more": "more",
     "w_done": "All done",
     "w_all": "All together",
-    "w_none_messages": "No messages"
+    "w_none_messages": "No messages",
+    "pop_card": "Integration card",
+    "pop_card_loading": "Loading card …",
+    "pop_card_error": "The card could not be loaded. Check the configuration under “Popup card”.",
+    "pop_open_integration": "Open integration",
+    "sev_default": "Default",
+    "sev_map_title": "Set the level for this message type",
+    "card_title": "Popup card",
+    "card_hint": "Lovelace card as JSON shown in the popup of a message from this source, e.g. {\"type\":\"markdown\",\"content\":\"Hello\"}. Save empty to remove it.",
+    "card_save": "Save card",
+    "card_remove": "Remove own card",
+    "card_invalid": "Not valid JSON.",
+    "set_imports": "Imports",
+    "imp_hint": "Rules turn any entity into a message, e.g. the Watchman counter.",
+    "imp_none": "No import rules yet.",
+    "imp_new": "New rule",
+    "imp_edit": "Edit",
+    "imp_name": "Name (shown as source)",
+    "imp_entity": "Entity",
+    "imp_mode": "Message active when …",
+    "imp_mode_count": "state is a number above 0",
+    "imp_mode_states": "state is one of the values",
+    "imp_states": "States (comma separated)",
+    "imp_severity": "Level",
+    "imp_title": "Title (template, optional)",
+    "imp_message": "Message (template, optional)",
+    "imp_tpl_hint": "Templates as in Home Assistant: {{ state }}, {{ name }}, {{ attrs.xyz }}. Empty = name or state.",
+    "imp_domain": "Integration for the logo (e.g. watchman, optional)",
+    "imp_save": "Save rule",
+    "imp_cancel": "Cancel",
+    "imp_watchman": "Watchman template",
+    "imp_watchman_title": "Watchman: missing entities",
+    "imp_watchman_message": "{{ state }} missing entities found",
+    "imp_service_hint": "Text reports (e.g. from Watchman) arrive through the service notification_center.report, see README.",
+    "set_inbound": "Inbound",
+    "inb_hint": "Map events or calls from another integration yourself: which field becomes title, text and level? This connects any integration that fires an event or calls an action.",
+    "inb_none": "No inbound rules yet.",
+    "inb_trigger": "Trigger",
+    "inb_trigger_event": "Event",
+    "inb_trigger_service": "Service call",
+    "inb_event_name": "Event name",
+    "inb_service_hint": "The other integration calls the action notification_center.inbound with the field rule. The exact call is shown in the list after saving.",
+    "inb_sev_field": "Level from field (template, optional)",
+    "inb_sev_field_hint": "E.g. {{ data.level }}. Empty = always the fixed level above.",
+    "inb_sev_map": "Value table (value=level)",
+    "inb_sev_map_hint": "E.g. error=critical, warning=warning, ok=ok. Levels: critical, warning, info, ok. Other values get the fixed level.",
+    "inb_key": "Key (template, optional)",
+    "inb_key_hint": "Same key = the same message is updated. Empty = one message per rule.",
+    "inb_resolve": "Close when (template, optional)",
+    "inb_resolve_hint": "E.g. {{ data.count | int == 0 }}. If the template is true, the message is closed.",
+    "inb_tpl_hint": "In the templates the received fields are available as data, e.g. {{ data.message }}. Without title/text the rule name or the raw content is shown.",
+    "inb_last": "Last received: {time}",
+    "inb_no_sample": "Nothing received yet. As soon as the integration sends something, you see the fields here.",
+    "inb_sample": "Last content",
+    "inb_call_hint": "This is how the other integration calls the Notification Center:",
+    "inb_event_hint": "The rule listens for the event {event}."
   },
   "nl": {
     "tab_messages": "Meldingen",
@@ -481,7 +591,62 @@ const I18N = {
     "w_more": "meer",
     "w_done": "Alles gedaan",
     "w_all": "Alles samen",
-    "w_none_messages": "Geen meldingen"
+    "w_none_messages": "Geen meldingen",
+    "pop_card": "Kaart van de integratie",
+    "pop_card_loading": "Kaart wordt geladen …",
+    "pop_card_error": "De kaart kon niet worden geladen. Controleer de configuratie onder „Popupkaart”.",
+    "pop_open_integration": "Integratie openen",
+    "sev_default": "Standaard",
+    "sev_map_title": "Niveau voor dit meldingstype instellen",
+    "card_title": "Popupkaart",
+    "card_hint": "Lovelace-kaart als JSON die in de popup van een melding van deze bron verschijnt, bijv. {\"type\":\"markdown\",\"content\":\"Hallo\"}. Leeg opslaan verwijdert haar.",
+    "card_save": "Kaart opslaan",
+    "card_remove": "Eigen kaart verwijderen",
+    "card_invalid": "Geen geldige JSON.",
+    "set_imports": "Imports",
+    "imp_hint": "Regels maken van elke entiteit een melding, bijv. de teller van Watchman.",
+    "imp_none": "Nog geen importregels.",
+    "imp_new": "Nieuwe regel",
+    "imp_edit": "Bewerken",
+    "imp_name": "Naam (verschijnt als bron)",
+    "imp_entity": "Entiteit",
+    "imp_mode": "Melding actief wanneer …",
+    "imp_mode_count": "status een getal groter dan 0 is",
+    "imp_mode_states": "status een van de waarden is",
+    "imp_states": "Statussen (kommagescheiden)",
+    "imp_severity": "Niveau",
+    "imp_title": "Titel (sjabloon, optioneel)",
+    "imp_message": "Bericht (sjabloon, optioneel)",
+    "imp_tpl_hint": "Sjablonen zoals in Home Assistant: {{ state }}, {{ name }}, {{ attrs.xyz }}. Leeg = naam of status.",
+    "imp_domain": "Integratie voor het logo (bijv. watchman, optioneel)",
+    "imp_save": "Regel opslaan",
+    "imp_cancel": "Annuleren",
+    "imp_watchman": "Watchman-sjabloon",
+    "imp_watchman_title": "Watchman: ontbrekende entiteiten",
+    "imp_watchman_message": "{{ state }} ontbrekende entiteiten gevonden",
+    "imp_service_hint": "Tekstrapporten (bijv. van Watchman) komen via de service notification_center.report, zie README.",
+    "set_inbound": "Invoer",
+    "inb_hint": "Wijs gebeurtenissen of aanroepen van een andere integratie zelf toe: welk veld wordt titel, tekst en niveau? Zo koppel je elke integratie die een gebeurtenis activeert of een actie aanroept.",
+    "inb_none": "Nog geen invoerregels.",
+    "inb_trigger": "Trigger",
+    "inb_trigger_event": "Gebeurtenis",
+    "inb_trigger_service": "Service-aanroep",
+    "inb_event_name": "Naam van de gebeurtenis",
+    "inb_service_hint": "De andere integratie roept de actie notification_center.inbound aan met het veld rule. De exacte aanroep staat na het opslaan in de lijst.",
+    "inb_sev_field": "Niveau uit veld (sjabloon, optioneel)",
+    "inb_sev_field_hint": "Bijv. {{ data.level }}. Leeg = altijd het vaste niveau hierboven.",
+    "inb_sev_map": "Waardentabel (waarde=niveau)",
+    "inb_sev_map_hint": "Bijv. error=critical, warning=warning, ok=ok. Niveaus: critical, warning, info, ok. Andere waarden krijgen het vaste niveau.",
+    "inb_key": "Sleutel (sjabloon, optioneel)",
+    "inb_key_hint": "Zelfde sleutel = dezelfde melding wordt bijgewerkt. Leeg = één melding per regel.",
+    "inb_resolve": "Sluiten wanneer (sjabloon, optioneel)",
+    "inb_resolve_hint": "Bijv. {{ data.count | int == 0 }}. Is het sjabloon waar, dan wordt de melding gesloten.",
+    "inb_tpl_hint": "In de sjablonen zijn de ontvangen velden beschikbaar als data, bijv. {{ data.message }}. Zonder titel/tekst verschijnt de regelnaam of de ruwe inhoud.",
+    "inb_last": "Laatst ontvangen: {time}",
+    "inb_no_sample": "Nog niets ontvangen. Zodra de integratie iets stuurt, zie je hier de velden.",
+    "inb_sample": "Laatste inhoud",
+    "inb_call_hint": "Zo roept de andere integratie het Notification Center aan:",
+    "inb_event_hint": "De regel luistert naar de gebeurtenis {event}."
   },
   "fr": {
     "tab_messages": "Messages",
@@ -633,7 +798,62 @@ const I18N = {
     "w_more": "de plus",
     "w_done": "Tout est fait",
     "w_all": "Tous ensemble",
-    "w_none_messages": "Aucun message"
+    "w_none_messages": "Aucun message",
+    "pop_card": "Carte de l’intégration",
+    "pop_card_loading": "Chargement de la carte …",
+    "pop_card_error": "La carte n’a pas pu être chargée. Vérifie la configuration sous « Carte popup ».",
+    "pop_open_integration": "Ouvrir l’intégration",
+    "sev_default": "Par défaut",
+    "sev_map_title": "Définir le niveau de ce type de message",
+    "card_title": "Carte popup",
+    "card_hint": "Carte Lovelace en JSON affichée dans la popup d’un message de cette source, p. ex. {\"type\":\"markdown\",\"content\":\"Bonjour\"}. Enregistrer vide la supprime.",
+    "card_save": "Enregistrer la carte",
+    "card_remove": "Supprimer ma carte",
+    "card_invalid": "JSON invalide.",
+    "set_imports": "Imports",
+    "imp_hint": "Les règles transforment n’importe quelle entité en message, p. ex. le compteur de Watchman.",
+    "imp_none": "Aucune règle d’import.",
+    "imp_new": "Nouvelle règle",
+    "imp_edit": "Modifier",
+    "imp_name": "Nom (affiché comme source)",
+    "imp_entity": "Entité",
+    "imp_mode": "Message actif lorsque …",
+    "imp_mode_count": "l’état est un nombre supérieur à 0",
+    "imp_mode_states": "l’état est l’une des valeurs",
+    "imp_states": "États (séparés par des virgules)",
+    "imp_severity": "Niveau",
+    "imp_title": "Titre (modèle, facultatif)",
+    "imp_message": "Message (modèle, facultatif)",
+    "imp_tpl_hint": "Modèles comme dans Home Assistant : {{ state }}, {{ name }}, {{ attrs.xyz }}. Vide = nom ou état.",
+    "imp_domain": "Intégration pour le logo (p. ex. watchman, facultatif)",
+    "imp_save": "Enregistrer la règle",
+    "imp_cancel": "Annuler",
+    "imp_watchman": "Modèle Watchman",
+    "imp_watchman_title": "Watchman : entités manquantes",
+    "imp_watchman_message": "{{ state }} entités manquantes trouvées",
+    "imp_service_hint": "Les rapports texte (p. ex. de Watchman) passent par le service notification_center.report, voir README.",
+    "set_inbound": "Entrées",
+    "inb_hint": "Associe toi-même les événements ou appels d’une autre intégration : quel champ devient titre, texte et niveau ? Cela permet de connecter toute intégration qui déclenche un événement ou appelle une action.",
+    "inb_none": "Aucune règle d’entrée.",
+    "inb_trigger": "Déclencheur",
+    "inb_trigger_event": "Événement",
+    "inb_trigger_service": "Appel de service",
+    "inb_event_name": "Nom de l’événement",
+    "inb_service_hint": "L’autre intégration appelle l’action notification_center.inbound avec le champ rule. L’appel exact s’affiche dans la liste après l’enregistrement.",
+    "inb_sev_field": "Niveau depuis un champ (modèle, facultatif)",
+    "inb_sev_field_hint": "P. ex. {{ data.level }}. Vide = toujours le niveau fixe ci-dessus.",
+    "inb_sev_map": "Table de valeurs (valeur=niveau)",
+    "inb_sev_map_hint": "P. ex. error=critical, warning=warning, ok=ok. Niveaux : critical, warning, info, ok. Les autres valeurs reçoivent le niveau fixe.",
+    "inb_key": "Clé (modèle, facultatif)",
+    "inb_key_hint": "Même clé = le même message est mis à jour. Vide = un message par règle.",
+    "inb_resolve": "Fermer lorsque (modèle, facultatif)",
+    "inb_resolve_hint": "P. ex. {{ data.count | int == 0 }}. Si le modèle est vrai, le message est fermé.",
+    "inb_tpl_hint": "Dans les modèles, les champs reçus sont disponibles sous data, p. ex. {{ data.message }}. Sans titre/texte, le nom de la règle ou le contenu brut s’affiche.",
+    "inb_last": "Dernière réception : {time}",
+    "inb_no_sample": "Rien reçu pour l’instant. Dès que l’intégration envoie quelque chose, tu vois ici les champs.",
+    "inb_sample": "Dernier contenu",
+    "inb_call_hint": "Voici comment l’autre intégration appelle Notification Center :",
+    "inb_event_hint": "La règle écoute l’événement {event}."
   },
   "es": {
     "tab_messages": "Mensajes",
@@ -785,7 +1005,62 @@ const I18N = {
     "w_more": "más",
     "w_done": "Todo listo",
     "w_all": "Todos juntos",
-    "w_none_messages": "Sin mensajes"
+    "w_none_messages": "Sin mensajes",
+    "pop_card": "Tarjeta de la integración",
+    "pop_card_loading": "Cargando tarjeta …",
+    "pop_card_error": "No se pudo cargar la tarjeta. Revisa la configuración en «Tarjeta emergente».",
+    "pop_open_integration": "Abrir integración",
+    "sev_default": "Predeterminado",
+    "sev_map_title": "Definir el nivel de este tipo de aviso",
+    "card_title": "Tarjeta emergente",
+    "card_hint": "Tarjeta Lovelace en JSON que aparece en la ventana de un aviso de esta fuente, p. ej. {\"type\":\"markdown\",\"content\":\"Hola\"}. Guardar vacío la elimina.",
+    "card_save": "Guardar tarjeta",
+    "card_remove": "Quitar mi tarjeta",
+    "card_invalid": "JSON no válido.",
+    "set_imports": "Importaciones",
+    "imp_hint": "Las reglas convierten cualquier entidad en un aviso, p. ej. el contador de Watchman.",
+    "imp_none": "Aún no hay reglas de importación.",
+    "imp_new": "Nueva regla",
+    "imp_edit": "Editar",
+    "imp_name": "Nombre (se muestra como fuente)",
+    "imp_entity": "Entidad",
+    "imp_mode": "Aviso activo cuando …",
+    "imp_mode_count": "el estado es un número mayor que 0",
+    "imp_mode_states": "el estado es uno de los valores",
+    "imp_states": "Estados (separados por comas)",
+    "imp_severity": "Nivel",
+    "imp_title": "Título (plantilla, opcional)",
+    "imp_message": "Mensaje (plantilla, opcional)",
+    "imp_tpl_hint": "Plantillas como en Home Assistant: {{ state }}, {{ name }}, {{ attrs.xyz }}. Vacío = nombre o estado.",
+    "imp_domain": "Integración para el logotipo (p. ej. watchman, opcional)",
+    "imp_save": "Guardar regla",
+    "imp_cancel": "Cancelar",
+    "imp_watchman": "Plantilla de Watchman",
+    "imp_watchman_title": "Watchman: entidades que faltan",
+    "imp_watchman_message": "{{ state }} entidades que faltan encontradas",
+    "imp_service_hint": "Los informes de texto (p. ej. de Watchman) llegan con el servicio notification_center.report, ver README.",
+    "set_inbound": "Entradas",
+    "inb_hint": "Asigna tú mismo los eventos o llamadas de otra integración: ¿qué campo es título, texto y nivel? Así se conecta cualquier integración que dispare un evento o llame a una acción.",
+    "inb_none": "Aún no hay reglas de entrada.",
+    "inb_trigger": "Disparador",
+    "inb_trigger_event": "Evento",
+    "inb_trigger_service": "Llamada de servicio",
+    "inb_event_name": "Nombre del evento",
+    "inb_service_hint": "La otra integración llama a la acción notification_center.inbound con el campo rule. La llamada exacta aparece en la lista tras guardar.",
+    "inb_sev_field": "Nivel desde un campo (plantilla, opcional)",
+    "inb_sev_field_hint": "P. ej. {{ data.level }}. Vacío = siempre el nivel fijo de arriba.",
+    "inb_sev_map": "Tabla de valores (valor=nivel)",
+    "inb_sev_map_hint": "P. ej. error=critical, warning=warning, ok=ok. Niveles: critical, warning, info, ok. Los demás valores reciben el nivel fijo.",
+    "inb_key": "Clave (plantilla, opcional)",
+    "inb_key_hint": "Misma clave = se actualiza el mismo aviso. Vacío = un aviso por regla.",
+    "inb_resolve": "Cerrar cuando (plantilla, opcional)",
+    "inb_resolve_hint": "P. ej. {{ data.count | int == 0 }}. Si la plantilla es verdadera, el aviso se cierra.",
+    "inb_tpl_hint": "En las plantillas los campos recibidos están disponibles como data, p. ej. {{ data.message }}. Sin título/texto se muestra el nombre de la regla o el contenido en bruto.",
+    "inb_last": "Último recibido: {time}",
+    "inb_no_sample": "Aún no se ha recibido nada. En cuanto la integración envíe algo, verás aquí los campos.",
+    "inb_sample": "Último contenido",
+    "inb_call_hint": "Así llama la otra integración a Notification Center:",
+    "inb_event_hint": "La regla escucha el evento {event}."
   }
 };
 
@@ -912,6 +1187,11 @@ function errorText(err, fallback) {
   }
 }
 
+// Logo der Integration (Brand-Proxy von Home Assistant); fehlt es, bleibt das mdi-Symbol.
+function brandUrl(domain) {
+  return `/api/brands/integration/${encodeURIComponent(domain)}/icon.png`;
+}
+
 function navigate(path) {
   history.pushState(null, "", path);
   window.dispatchEvent(new Event("location-changed", { bubbles: true, composed: true }));
@@ -981,6 +1261,12 @@ class NotificationCenterCard extends HTMLElement {
     this._toastTimer = null;
     this._testSeverity = "info";
     this._checking = false;
+    this._brandFail = new Set();
+    this._popCard = null;
+    this._popCardKey = null;
+    this._cardDraft = {};
+    this._imp = { editing: null, form: null };
+    this._inb = { editing: null, form: null };
     this._send = { recipient: "", title: "", message: "", urgency: "normal", busy: false, status: null };
     this._statusTimer = null;
     this._builder = {
@@ -1024,7 +1310,7 @@ class NotificationCenterCard extends HTMLElement {
     const root = this.shadowRoot;
     const active = root && root.activeElement;
     const role = active && active.getAttribute && active.getAttribute("data-role");
-    return !!(role && (role.startsWith("send-") || role.startsWith("build-")));
+    return !!(role && (role.startsWith("send-") || role.startsWith("build-") || role.startsWith("imp-") || role.startsWith("inb-") || role.startsWith("card-")));
   }
 
   _isSearchFocused() {
@@ -1441,7 +1727,8 @@ class NotificationCenterCard extends HTMLElement {
       pill = `<span class="pill" style="--c:${color}">${escapeHtml(this._sevLabel(item.severity))}</span>`;
       const parts = [item.source_name, item.subject_name].filter(Boolean);
       if (item.status) parts.push(t(item.status === "resolved" ? "status_resolved" : "status_ack"));
-      metaLine = parts.length ? `<div class="row-meta">${escapeHtml(parts.join(" · "))}</div>` : "";
+      const logo = this._srcLogo(item.source_domain, item.source_icon);
+      metaLine = parts.length ? `<div class="row-meta">${logo}<span>${escapeHtml(parts.join(" · "))}</span></div>` : "";
       actionIcon = "mdi:check";
       actionTitle = t("ack");
       if (item.status) actionHidden = true;
@@ -1469,6 +1756,17 @@ class NotificationCenterCard extends HTMLElement {
         </div>
         ${actionHidden ? "" : `<button class="row-action" title="${escapeHtml(actionTitle)}" data-action="1" ${actionDisabled}><ha-icon icon="${actionIcon}"></ha-icon></button>`}
       </div>`;
+  }
+
+  _sourceOf(id) {
+    return (this._msgAttr("sources", []) || []).find((src) => src.source === id) || null;
+  }
+
+  // Kleines Herkunfts-Logo: Logo der Integration, sonst das Symbol der Quelle.
+  _srcLogo(domain, icon) {
+    const fallback = `<ha-icon icon="${escapeHtml(icon || "mdi:puzzle-outline")}"></ha-icon>`;
+    if (!domain || this._brandFail.has(domain)) return `<span class="src-logo">${fallback}</span>`;
+    return `<span class="src-logo"><img src="${escapeHtml(brandUrl(domain))}" alt="" loading="lazy" data-brand="${escapeHtml(domain)}" />${fallback.replace("<ha-icon", '<ha-icon hidden')}</span>`;
   }
 
   _accordion(map, key, icon, title, bodyHtml, opts = {}) {
@@ -1500,13 +1798,16 @@ class NotificationCenterCard extends HTMLElement {
         item.status ? this._line(t("k_status"), t(item.status === "resolved" ? "status_resolved" : "status_ack")) : "",
       ].join("");
       const source = [
-        this._line(t("k_source"), item.source_name || item.source),
+        `<div class="detail-row"><span class="detail-key">${escapeHtml(t("k_source"))}</span><span class="detail-value src-value">${this._srcLogo(item.source_domain, item.source_icon)}${escapeHtml(item.source_name || item.source)}</span></div>`,
         item.subject_name ? this._line(t("k_object"), item.subject_name) : "",
         this._line(t("k_type"), item.type),
       ].join("");
       sections =
         this._accordion(this._popAcc, "pop_info", "mdi:information-outline", t("pop_info"), info, { open: true }) +
-        this._accordion(this._popAcc, "pop_source", "mdi:source-branch", t("pop_source"), source);
+        this._accordion(this._popAcc, "pop_source", "mdi:source-branch", t("pop_source"), source) +
+        (item.has_card
+          ? this._accordion(this._popAcc, "pop_card", "mdi:card-text-outline", t("pop_card"), `<div class="card-host" data-card-host><span class="send-hint">${escapeHtml(t("pop_card_loading"))}</span></div>`, { open: true })
+          : "");
     } else {
       const fields = Object.entries(item)
         .filter(([key]) => key !== "title")
@@ -1518,6 +1819,9 @@ class NotificationCenterCard extends HTMLElement {
     const footerButtons = [];
     if (isMessage) {
       if (!item.status && !this._ro()) footerButtons.push(`<button class="popup-primary" data-popup-ack>${escapeHtml(t("ack"))}</button>`);
+      if (item.source !== "notification_center" && item.source_domain) {
+        footerButtons.push(`<button class="popup-secondary" data-popup-open-integration="${escapeHtml(item.source_domain)}">${escapeHtml(t("pop_open_integration"))}</button>`);
+      }
     } else if (def.key === "notifications") {
       if (!this._ro()) footerButtons.push(`<button class="popup-primary" data-popup-delete>${escapeHtml(t("delete"))}</button>`);
     } else if (def.key === "updates") {
@@ -1655,6 +1959,13 @@ class NotificationCenterCard extends HTMLElement {
     }
     const closeBtn = root.querySelector("[data-popup-close]");
     if (closeBtn) closeBtn.addEventListener("click", closePopup);
+    const integrationBtn = root.querySelector("[data-popup-open-integration]");
+    if (integrationBtn) {
+      integrationBtn.addEventListener("click", () => {
+        navigate(`/config/integrations/integration/${integrationBtn.getAttribute("data-popup-open-integration")}`);
+      });
+    }
+    this._mountPopupCard();
     const ackBtn = root.querySelector("[data-popup-ack]");
     if (ackBtn) {
       ackBtn.addEventListener("click", () => {
@@ -1686,6 +1997,43 @@ class NotificationCenterCard extends HTMLElement {
         closePopup();
       });
     }
+  }
+
+  // Die Karte der Integration im Popup: einmal erzeugt und bei jedem Neuzeichnen wieder eingehängt.
+  async _mountPopupCard() {
+    const host = this.shadowRoot.querySelector("[data-card-host]");
+    const item = this._detailItem;
+    if (!host || !item) {
+      this._popCard = null;
+      this._popCardKey = null;
+      return;
+    }
+    const src = this._sourceOf(item.source);
+    const config = src && src.card;
+    if (!config) return;
+    const key = `${item.source}|${JSON.stringify(config)}`;
+    if (this._popCardKey !== key) {
+      this._popCardKey = key;
+      this._popCard = null;
+      try {
+        const helpers = await window.loadCardHelpers();
+        if (this._popCardKey !== key) return;
+        this._popCard = await helpers.createCardElement(config);
+      } catch (err) {
+        if (this._popCardKey !== key) return;
+        const box = document.createElement("div");
+        box.className = "send-hint";
+        box.textContent = this._t("pop_card_error");
+        this._popCard = box;
+      }
+    }
+    const fresh = this.shadowRoot.querySelector("[data-card-host]");
+    if (!fresh || !this._popCard) return;
+    if (this._popCard.parentNode !== fresh) {
+      fresh.textContent = "";
+      fresh.appendChild(this._popCard);
+    }
+    if ("hass" in this._popCard || this._popCard.setConfig) this._popCard.hass = this._hass;
   }
 
   // --- Zahnrad: Einstellungen ----------------------------------------------
@@ -1721,31 +2069,104 @@ class NotificationCenterCard extends HTMLElement {
     const t = (key, vars) => this._t(key, vars);
     const sources = this._msgAttr("sources", []);
     if (!sources.length) return `<div class="send-hint">${escapeHtml(t("src_none"))}</div>`;
+    const editable = this._isAdmin() && !this._ro();
     return sources
       .map((src) => {
         const statusColor = src.seen ? this._sevColor("ok") : this._sevColor("warning");
         const types = (src.types || [])
-          .map(
-            (ty) => `<div class="src-type ${ty.enabled ? "" : "off"}">
+          .map((ty) => {
+            const select = `<select class="send-input sev-select" data-sev-map data-source="${escapeHtml(src.source)}" data-msg-type="${escapeHtml(ty.type)}" ${editable ? "" : "disabled"} title="${escapeHtml(t("sev_map_title"))}">
+                <option value="">${escapeHtml(t("sev_default"))} (${escapeHtml(this._sevLabel(ty.default_severity || ty.severity))})</option>
+                ${SEVERITY_ORDER.map((sev) => `<option value="${sev}" ${ty.overridden && ty.severity === sev ? "selected" : ""}>${escapeHtml(this._sevLabel(sev))}</option>`).join("")}
+              </select>`;
+            return `<div class="src-type ${ty.enabled ? "" : "off"}">
               <span class="chip-dot" style="background:${this._sevColor(ty.severity)}"></span>
               ${ty.icon ? `<ha-icon icon="${escapeHtml(ty.icon)}"></ha-icon>` : ""}
-              <span class="grow">${escapeHtml(ty.label)}</span>
-              <span class="send-hint">${escapeHtml(ty.enabled ? (ty.open ? t("src_open", { n: ty.open }) : "") : t("src_off"))}</span>
-            </div>`
-          )
+              <span class="grow">${escapeHtml(ty.label)}<span class="send-hint"> ${escapeHtml(ty.enabled ? (ty.open ? t("src_open", { n: ty.open }) : "") : t("src_off"))}</span></span>
+              ${select}
+            </div>`;
+          })
           .join("");
+        const draft = this._cardDraft[src.source];
+        const cardText = draft !== undefined ? draft : src.card ? JSON.stringify(src.card, null, 2) : "";
+        const cardBody = `
+          <div class="send-hint">${escapeHtml(t("card_hint"))}</div>
+          <textarea class="send-input mono" rows="5" data-role="card-json" data-source="${escapeHtml(src.source)}" ${editable ? "" : "disabled"}>${escapeHtml(cardText)}</textarea>
+          ${editable ? `<div class="send-actions wrap">
+            <button class="popup-primary" data-card-save="${escapeHtml(src.source)}">${escapeHtml(t("card_save"))}</button>
+            ${src.card_custom ? `<button class="popup-secondary" data-card-remove="${escapeHtml(src.source)}">${escapeHtml(t("card_remove"))}</button>` : ""}
+          </div>` : ""}`;
         return `
           <div class="src">
             <div class="src-head">
-              <ha-icon icon="${escapeHtml(src.icon || "mdi:bell-outline")}"></ha-icon>
+              ${this._srcLogo(src.domain, src.icon)}
               <span class="grow"><b>${escapeHtml(src.name)}</b> ${src.version ? `<span class="send-hint">${escapeHtml(src.version)}</span>` : ""}</span>
               <span class="pill" style="--c:${statusColor}">${escapeHtml(t(src.seen ? "src_seen" : "src_unseen"))}</span>
             </div>
             ${src.enabled ? "" : `<div class="send-hint">${escapeHtml(t("src_off"))}</div>`}
             ${types}
+            ${this._accordion(this._acc, `card_${src.source}`, "mdi:card-text-outline", t("card_title"), cardBody, { meta: src.card ? "●" : "" })}
           </div>`;
       })
       .join("");
+  }
+
+  // --- Importe: Entity-Regeln -------------------------------------------------
+  _emptyRule() {
+    return { id: "", name: "", entity_id: "", mode: "count", states: "", severity: "warning", title: "", message: "", domain: "" };
+  }
+
+  _importsHtml() {
+    const t = (key, vars) => this._t(key, vars);
+    const settings = this._msgAttr("settings", {}) || {};
+    const rules = settings.imports || [];
+    const editable = this._isAdmin() && !this._ro();
+    const list = rules.length
+      ? rules
+          .map(
+            (r) => `<div class="src-type">
+              <span class="chip-dot" style="background:${this._sevColor(r.severity)}"></span>
+              <span class="grow"><b>${escapeHtml(r.name)}</b><br /><span class="send-hint">${escapeHtml(r.entity_id)} · ${escapeHtml(t(r.mode === "count" ? "imp_mode_count" : "imp_mode_states"))}</span></span>
+              ${editable ? `<button class="popup-secondary small" data-imp-edit="${escapeHtml(r.id)}">${escapeHtml(t("imp_edit"))}</button>
+              <button class="popup-secondary small ${this._confirmId === `imp_${r.id}` ? "armed" : ""}" data-imp-delete="${escapeHtml(r.id)}">${escapeHtml(this._confirmId === `imp_${r.id}` ? t("confirm") : t("delete"))}</button>` : ""}
+            </div>`
+          )
+          .join("")
+      : `<div class="send-hint">${escapeHtml(t("imp_none"))}</div>`;
+    const form = this._imp.form ? this._importFormHtml() : editable ? `<div class="send-actions wrap"><button class="popup-primary" data-imp-new><ha-icon icon="mdi:plus"></ha-icon><span>${escapeHtml(t("imp_new"))}</span></button></div>` : "";
+    return `<div class="send-hint">${escapeHtml(t("imp_hint"))}</div>${list}${form}<div class="send-hint">${escapeHtml(t("imp_service_hint"))}</div>`;
+  }
+
+  _importFormHtml() {
+    const t = (key, vars) => this._t(key, vars);
+    const f = this._imp.form;
+    const ids = Object.keys((this._hass && this._hass.states) || {}).sort().slice(0, 1500);
+    const field = (role, label, value, extra = "") =>
+      `<div class="send-label">${escapeHtml(label)}</div><input class="send-input" type="text" data-role="${role}" autocomplete="off" value="${escapeHtml(value)}" ${extra} />`;
+    const sevOptions = SEVERITY_ORDER.map((sev) => `<option value="${sev}" ${f.severity === sev ? "selected" : ""}>${escapeHtml(this._sevLabel(sev))}</option>`).join("");
+    return `
+      <div class="imp-form">
+        <div class="send-actions wrap"><button class="popup-secondary small" data-imp-watchman><ha-icon icon="mdi:eye-check-outline"></ha-icon>${escapeHtml(t("imp_watchman"))}</button></div>
+        ${field("imp-name", t("imp_name"), f.name)}
+        ${field("imp-entity", t("imp_entity"), f.entity_id, 'list="nc-imp-entities"')}
+        <datalist id="nc-imp-entities">${ids.map((id) => `<option value="${escapeHtml(id)}"></option>`).join("")}</datalist>
+        <div class="send-label">${escapeHtml(t("imp_mode"))}</div>
+        <select class="send-input" data-role="imp-mode">
+          <option value="count" ${f.mode === "count" ? "selected" : ""}>${escapeHtml(t("imp_mode_count"))}</option>
+          <option value="states" ${f.mode === "states" ? "selected" : ""}>${escapeHtml(t("imp_mode_states"))}</option>
+        </select>
+        ${f.mode === "states" ? field("imp-states", t("imp_states"), f.states) : ""}
+        <div class="send-label">${escapeHtml(t("imp_severity"))}</div>
+        <select class="send-input" data-role="imp-severity">${sevOptions}</select>
+        ${field("imp-title", t("imp_title"), f.title)}
+        ${field("imp-message", t("imp_message"), f.message)}
+        <div class="send-hint">${escapeHtml(t("imp_tpl_hint"))}</div>
+        ${field("imp-domain", t("imp_domain"), f.domain)}
+        <div class="send-actions wrap">
+          <button class="popup-primary" data-imp-save ${f.name.trim() && f.entity_id.trim() ? "" : "disabled"}>${escapeHtml(t("imp_save"))}</button>
+          <button class="popup-secondary" data-imp-cancel>${escapeHtml(t("imp_cancel"))}</button>
+        </div>
+      </div>`;
   }
 
   _switchHtml(role, checked, disabled) {
@@ -1826,6 +2247,12 @@ class NotificationCenterCard extends HTMLElement {
       }),
       this._accordion(this._acc, "src", "mdi:lan-connect", t("set_sources"), this._sourcesHtml(), { open: true, meta: String(sources.length) }),
       this._accordion(this._acc, "opt", "mdi:tune", t("set_options"), this._optionsHtml()),
+      this._accordion(this._acc, "inb", "mdi:swap-horizontal", t("set_inbound"), this._inboundHtml(), {
+        meta: String((((this._msgAttr("settings", {}) || {}).inbound) || []).length || ""),
+      }),
+      this._accordion(this._acc, "imp", "mdi:import", t("set_imports"), this._importsHtml(), {
+        meta: String((((this._msgAttr("settings", {}) || {}).imports) || []).length || ""),
+      }),
       this._accordion(this._acc, "maint", "mdi:wrench-cog-outline", t("set_maint"), this._maintenanceHtml()),
       this._accordion(this._acc, "events", "mdi:format-list-bulleted", t("set_events"), this._eventsHtml()),
     ].join("");
@@ -1848,6 +2275,52 @@ class NotificationCenterCard extends HTMLElement {
         else current.add(id);
         this._ws("set_delivery", { severity: sev, recipients: [...current] }, this._t("saved"));
       });
+    });
+    root.querySelectorAll("[data-sev-map]").forEach((el) => {
+      el.addEventListener("change", () => {
+        this._ws("set_severity", { source: el.getAttribute("data-source"), msg_type: el.getAttribute("data-msg-type"), severity: el.value }, this._t("saved"));
+      });
+    });
+    root.querySelectorAll('[data-role="card-json"]').forEach((el) => {
+      stopKeyPropagation(el);
+      el.addEventListener("input", () => {
+        this._cardDraft[el.getAttribute("data-source")] = el.value;
+      });
+    });
+    root.querySelectorAll("[data-card-save]").forEach((el) => {
+      el.addEventListener("click", async () => {
+        const source = el.getAttribute("data-card-save");
+        const area = root.querySelector(`[data-role="card-json"][data-source="${source}"]`);
+        const text = area ? area.value.trim() : "";
+        let card = null;
+        if (text) {
+          try {
+            card = JSON.parse(text);
+          } catch (err) {
+            this._showToast(this._t("card_invalid"), "error");
+            return;
+          }
+        }
+        const result = await this._ws("set_card", { source, card }, this._t("saved"));
+        if (result) delete this._cardDraft[source];
+      });
+    });
+    root.querySelectorAll("[data-card-remove]").forEach((el) => {
+      el.addEventListener("click", async () => {
+        const source = el.getAttribute("data-card-remove");
+        const result = await this._ws("set_card", { source, card: null }, this._t("saved"));
+        if (result) delete this._cardDraft[source];
+      });
+    });
+    this._attachImportListeners();
+    this._attachInboundListeners();
+    root.querySelectorAll("img[data-brand]").forEach((img) => {
+      img.addEventListener("error", () => {
+        this._brandFail.add(img.getAttribute("data-brand"));
+        img.style.display = "none";
+        const icon = img.parentNode && img.parentNode.querySelector("ha-icon");
+        if (icon) icon.hidden = false;
+      }, { once: true });
     });
     root.querySelectorAll("[data-test-severity]").forEach((el) => {
       el.addEventListener("click", () => {
@@ -1873,6 +2346,247 @@ class NotificationCenterCard extends HTMLElement {
         this._render();
         await this._ws("check_update", {}, null);
         this._checking = false;
+        this._render();
+      });
+    }
+  }
+
+  _attachImportListeners() {
+    const root = this.shadowRoot;
+    const form = this._imp.form;
+    const bind = (role, key) => {
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if (!el) return;
+      stopKeyPropagation(el);
+      el.addEventListener("input", () => {
+        form[key] = el.value;
+        const save = root.querySelector("[data-imp-save]");
+        if (save) save.disabled = !(form.name.trim() && form.entity_id.trim());
+      });
+    };
+    if (form) {
+      bind("imp-name", "name");
+      bind("imp-entity", "entity_id");
+      bind("imp-states", "states");
+      bind("imp-title", "title");
+      bind("imp-message", "message");
+      bind("imp-domain", "domain");
+      const mode = root.querySelector('[data-role="imp-mode"]');
+      if (mode) mode.addEventListener("change", () => { form.mode = mode.value; this._render(); });
+      const sev = root.querySelector('[data-role="imp-severity"]');
+      if (sev) sev.addEventListener("change", () => { form.severity = sev.value; });
+    }
+    const rules = (((this._msgAttr("settings", {}) || {}).imports) || []);
+    const newBtn = root.querySelector("[data-imp-new]");
+    if (newBtn) newBtn.addEventListener("click", () => { this._imp = { editing: "new", form: this._emptyRule() }; this._render(); });
+    root.querySelectorAll("[data-imp-edit]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const rule = rules.find((r) => r.id === el.getAttribute("data-imp-edit"));
+        if (!rule) return;
+        this._imp = { editing: rule.id, form: { ...this._emptyRule(), ...rule, states: (rule.states || []).join(", "), domain: rule.domain || "" } };
+        this._render();
+      });
+    });
+    root.querySelectorAll("[data-imp-delete]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.getAttribute("data-imp-delete");
+        this._confirmClick(`imp_${id}`, () => this._ws("delete_import", { id }, this._t("saved")));
+      });
+    });
+    const watchman = root.querySelector("[data-imp-watchman]");
+    if (watchman) {
+      watchman.addEventListener("click", () => {
+        Object.assign(form, {
+          name: "Watchman",
+          entity_id: "sensor.watchman_missing_entities",
+          mode: "count",
+          severity: "warning",
+          title: this._t("imp_watchman_title"),
+          message: this._t("imp_watchman_message"),
+          domain: "watchman",
+        });
+        this._render();
+      });
+    }
+    const cancel = root.querySelector("[data-imp-cancel]");
+    if (cancel) cancel.addEventListener("click", () => { this._imp = { editing: null, form: null }; this._render(); });
+    const save = root.querySelector("[data-imp-save]");
+    if (save) {
+      save.addEventListener("click", async () => {
+        const rule = {
+          name: form.name.trim(),
+          entity_id: form.entity_id.trim(),
+          mode: form.mode,
+          states: form.mode === "states" ? form.states.split(",").map((x) => x.trim()).filter(Boolean) : [],
+          severity: form.severity,
+          title: form.title,
+          message: form.message,
+        };
+        if (form.domain.trim()) rule.domain = form.domain.trim();
+        if (this._imp.editing && this._imp.editing !== "new") rule.id = this._imp.editing;
+        const result = await this._ws("set_import", { rule }, this._t("saved"));
+        if (result) this._imp = { editing: null, form: null };
+        this._render();
+      });
+    }
+  }
+
+  // --- Eingänge: Ereignis oder Service -> Meldung (Zuordnung durch den Nutzer) ---------
+  _emptyInbound() {
+    return { id: "", name: "", trigger: "event", event_type: "", severity: "info", severity_field: "", severity_map: "", title: "", message: "", key: "", resolve_when: "", domain: "" };
+  }
+
+  _mapToText(map) {
+    return Object.entries(map || {}).map(([k, v]) => `${k}=${v}`).join(", ");
+  }
+
+  _textToMap(text) {
+    const out = {};
+    String(text || "").split(/[,\n]/).forEach((part) => {
+      const idx = part.indexOf("=");
+      if (idx < 1) return;
+      const key = part.slice(0, idx).trim();
+      const val = part.slice(idx + 1).trim();
+      if (key && SEVERITY_ORDER.includes(val)) out[key] = val;
+    });
+    return out;
+  }
+
+  _inboundHtml() {
+    const t = (key, vars) => this._t(key, vars);
+    const settings = this._msgAttr("settings", {}) || {};
+    const rules = settings.inbound || [];
+    const editable = this._isAdmin() && !this._ro();
+    const list = rules.length
+      ? rules
+          .map((r) => {
+            const sample = r.sample && r.sample.data ? r.sample : null;
+            const sampleBody = sample
+              ? `<div class="send-hint">${escapeHtml(t("inb_last", { time: formatTimeAgo(sample.time, t) }))}</div><pre class="sample">${escapeHtml(sample.data)}</pre>`
+              : `<div class="send-hint">${escapeHtml(t("inb_no_sample"))}</div>`;
+            const callBody =
+              r.trigger === "service"
+                ? `<div class="send-hint">${escapeHtml(t("inb_call_hint"))}</div><pre class="sample">action: notification_center.inbound\ndata:\n  rule: ${escapeHtml(r.id)}</pre>`
+                : `<div class="send-hint">${escapeHtml(t("inb_event_hint", { event: r.event_type }))}</div>`;
+            return `<div class="src">
+              <div class="src-type">
+                <span class="chip-dot" style="background:${this._sevColor(r.severity)}"></span>
+                <span class="grow"><b>${escapeHtml(r.name)}</b><br /><span class="send-hint">${escapeHtml(r.trigger === "service" ? t("inb_trigger_service") : `${t("inb_trigger_event")}: ${r.event_type}`)}</span></span>
+                ${editable ? `<button class="popup-secondary small" data-inb-edit="${escapeHtml(r.id)}">${escapeHtml(t("imp_edit"))}</button>
+                <button class="popup-secondary small ${this._confirmId === `inb_${r.id}` ? "armed" : ""}" data-inb-delete="${escapeHtml(r.id)}">${escapeHtml(this._confirmId === `inb_${r.id}` ? t("confirm") : t("delete"))}</button>` : ""}
+              </div>
+              ${callBody}
+              ${this._accordion(this._acc, `inbs_${r.id}`, "mdi:code-json", t("inb_sample"), sampleBody, {})}
+            </div>`;
+          })
+          .join("")
+      : `<div class="send-hint">${escapeHtml(t("inb_none"))}</div>`;
+    const form = this._inb.form ? this._inboundFormHtml() : editable ? `<div class="send-actions wrap"><button class="popup-primary" data-inb-new><ha-icon icon="mdi:plus"></ha-icon><span>${escapeHtml(t("imp_new"))}</span></button></div>` : "";
+    return `<div class="send-hint">${escapeHtml(t("inb_hint"))}</div>${list}${form}`;
+  }
+
+  _inboundFormHtml() {
+    const t = (key, vars) => this._t(key, vars);
+    const f = this._inb.form;
+    const field = (role, label, value, hint = "") =>
+      `<div class="send-label">${escapeHtml(label)}</div><input class="send-input" type="text" data-role="${role}" autocomplete="off" value="${escapeHtml(value)}" />${hint ? `<div class="send-hint">${escapeHtml(hint)}</div>` : ""}`;
+    const sevOptions = SEVERITY_ORDER.map((sev) => `<option value="${sev}" ${f.severity === sev ? "selected" : ""}>${escapeHtml(this._sevLabel(sev))}</option>`).join("");
+    const valid = f.name.trim() && (f.trigger === "service" || f.event_type.trim());
+    return `
+      <div class="imp-form">
+        <div class="send-actions wrap"><button class="popup-secondary small" data-inb-watchman><ha-icon icon="mdi:eye-check-outline"></ha-icon>${escapeHtml(t("imp_watchman"))}</button></div>
+        ${field("inb-name", t("imp_name"), f.name)}
+        <div class="send-label">${escapeHtml(t("inb_trigger"))}</div>
+        <select class="send-input" data-role="inb-trigger">
+          <option value="event" ${f.trigger === "event" ? "selected" : ""}>${escapeHtml(t("inb_trigger_event"))}</option>
+          <option value="service" ${f.trigger === "service" ? "selected" : ""}>${escapeHtml(t("inb_trigger_service"))}</option>
+        </select>
+        ${f.trigger === "event" ? field("inb-event", t("inb_event_name"), f.event_type) : `<div class="send-hint">${escapeHtml(t("inb_service_hint"))}</div>`}
+        <div class="send-label">${escapeHtml(t("imp_severity"))}</div>
+        <select class="send-input" data-role="inb-severity">${sevOptions}</select>
+        ${field("inb-sevfield", t("inb_sev_field"), f.severity_field, t("inb_sev_field_hint"))}
+        ${field("inb-sevmap", t("inb_sev_map"), f.severity_map, t("inb_sev_map_hint"))}
+        ${field("inb-title", t("imp_title"), f.title)}
+        ${field("inb-message", t("imp_message"), f.message)}
+        ${field("inb-key", t("inb_key"), f.key, t("inb_key_hint"))}
+        ${field("inb-resolve", t("inb_resolve"), f.resolve_when, t("inb_resolve_hint"))}
+        <div class="send-hint">${escapeHtml(t("inb_tpl_hint"))}</div>
+        ${field("inb-domain", t("imp_domain"), f.domain)}
+        <div class="send-actions wrap">
+          <button class="popup-primary" data-inb-save ${valid ? "" : "disabled"}>${escapeHtml(t("imp_save"))}</button>
+          <button class="popup-secondary" data-inb-cancel>${escapeHtml(t("imp_cancel"))}</button>
+        </div>
+      </div>`;
+  }
+
+  _attachInboundListeners() {
+    const root = this.shadowRoot;
+    const form = this._inb.form;
+    const refresh = () => {
+      const save = root.querySelector("[data-inb-save]");
+      if (save) save.disabled = !(form.name.trim() && (form.trigger === "service" || form.event_type.trim()));
+    };
+    const bind = (role, key) => {
+      const el = root.querySelector(`[data-role="${role}"]`);
+      if (!el) return;
+      stopKeyPropagation(el);
+      el.addEventListener("input", () => {
+        form[key] = el.value;
+        refresh();
+      });
+    };
+    if (form) {
+      [["inb-name", "name"], ["inb-event", "event_type"], ["inb-sevfield", "severity_field"], ["inb-sevmap", "severity_map"], ["inb-title", "title"], ["inb-message", "message"], ["inb-key", "key"], ["inb-resolve", "resolve_when"], ["inb-domain", "domain"]].forEach(([role, key]) => bind(role, key));
+      const trigger = root.querySelector('[data-role="inb-trigger"]');
+      if (trigger) trigger.addEventListener("change", () => { form.trigger = trigger.value; this._render(); });
+      const sev = root.querySelector('[data-role="inb-severity"]');
+      if (sev) sev.addEventListener("change", () => { form.severity = sev.value; });
+    }
+    const rules = (((this._msgAttr("settings", {}) || {}).inbound) || []);
+    const newBtn = root.querySelector("[data-inb-new]");
+    if (newBtn) newBtn.addEventListener("click", () => { this._inb = { editing: "new", form: this._emptyInbound() }; this._render(); });
+    root.querySelectorAll("[data-inb-edit]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const rule = rules.find((r) => r.id === el.getAttribute("data-inb-edit"));
+        if (!rule) return;
+        this._inb = { editing: rule.id, form: { ...this._emptyInbound(), ...rule, severity_map: this._mapToText(rule.severity_map), domain: rule.domain || "" } };
+        this._render();
+      });
+    });
+    root.querySelectorAll("[data-inb-delete]").forEach((el) => {
+      el.addEventListener("click", () => {
+        const id = el.getAttribute("data-inb-delete");
+        this._confirmClick(`inb_${id}`, () => this._ws("delete_inbound", { id }, this._t("saved")));
+      });
+    });
+    const watchman = root.querySelector("[data-inb-watchman]");
+    if (watchman) {
+      watchman.addEventListener("click", () => {
+        Object.assign(form, { name: "Watchman", trigger: "service", event_type: "", severity: "warning", severity_field: "", severity_map: "", title: "Watchman", message: "{{ data.message }}", key: "report", resolve_when: "", domain: "watchman" });
+        this._render();
+      });
+    }
+    const cancel = root.querySelector("[data-inb-cancel]");
+    if (cancel) cancel.addEventListener("click", () => { this._inb = { editing: null, form: null }; this._render(); });
+    const save = root.querySelector("[data-inb-save]");
+    if (save) {
+      save.addEventListener("click", async () => {
+        const rule = {
+          name: form.name.trim(),
+          trigger: form.trigger,
+          event_type: form.trigger === "event" ? form.event_type.trim() : "",
+          severity: form.severity,
+          severity_field: form.severity_field,
+          severity_map: this._textToMap(form.severity_map),
+          title: form.title,
+          message: form.message,
+          key: form.key,
+          resolve_when: form.resolve_when,
+        };
+        if (form.domain.trim()) rule.domain = form.domain.trim();
+        if (this._inb.editing && this._inb.editing !== "new") rule.id = this._inb.editing;
+        const result = await this._ws("set_inbound", { rule }, this._t("saved"));
+        if (result) this._inb = { editing: null, form: null };
         this._render();
       });
     }
@@ -2654,6 +3368,21 @@ class NotificationCenterCard extends HTMLElement {
       .src-type { padding-left: 28px; font-size: 0.9rem; }
       .src-type ha-icon { --mdc-icon-size: 16px; color: var(--secondary-text-color); }
       .src-type.off { opacity: 0.5; }
+      .src-logo { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; flex: 0 0 20px; }
+      .src-logo img { width: 20px; height: 20px; object-fit: contain; border-radius: 4px; }
+      .src-logo ha-icon { --mdc-icon-size: 18px; }
+      .row-meta { display: flex; align-items: center; gap: 6px; }
+      .row-meta .src-logo { width: 16px; height: 16px; flex-basis: 16px; }
+      .row-meta .src-logo img { width: 16px; height: 16px; }
+      .row-meta .src-logo ha-icon { --mdc-icon-size: 14px; }
+      .src-value { display: inline-flex; align-items: center; gap: 6px; }
+      .sev-select { width: auto; flex: 0 0 auto; max-width: 52%; padding: 4px 6px; font-size: 0.8rem; }
+      .src-type { flex-wrap: wrap; }
+      .send-input.mono { font-family: var(--code-font-family, monospace); font-size: 0.8rem; }
+      .card-host { min-height: 24px; }
+      pre.sample { margin: 4px 0; padding: 8px; max-height: 180px; overflow: auto; font-size: 0.75rem; background: var(--secondary-background-color, #f5f5f5); border-radius: 6px; white-space: pre-wrap; word-break: break-word; user-select: all; }
+      .imp-form { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--divider-color, #f0f0f0); }
+      .popup-secondary.small { padding: 4px 10px; font-size: 0.8rem; }
       @container nc (max-width: 480px) {
         .tab .lbl { display: none; }
         .tab { padding: 6px 12px; }

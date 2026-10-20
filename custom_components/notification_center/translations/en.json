@@ -119,9 +119,63 @@
           "description": "Normal, high or urgent. “Urgent” bypasses silent mode on phones."
         }
       }
+    },
+    "report": {
+      "name": "Report a notification",
+      "description": "Creates or updates a message in the Notification Center. Meant for integrations without their own interface (e.g. set it as the action of the Watchman report).",
+      "fields": {
+        "message": {
+          "name": "Message",
+          "description": "The message text."
+        },
+        "title": {
+          "name": "Title",
+          "description": "Optional title (default: source name)."
+        },
+        "source": {
+          "name": "Source",
+          "description": "Name of the source, e.g. Watchman. Used for the origin icon."
+        },
+        "key": {
+          "name": "Key",
+          "description": "Same key = the same message is updated (default: default)."
+        },
+        "state": {
+          "name": "State",
+          "description": "active (default) or resolved to close the message."
+        },
+        "severity": {
+          "name": "Level",
+          "description": "critical, warning, info (default) or ok. Can be changed in the card."
+        },
+        "domain": {
+          "name": "Integration (domain)",
+          "description": "Domain for the logo, e.g. watchman (default: source name)."
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "Fallback icon, e.g. mdi:eye-check."
+        }
+      }
+    },
+    "inbound": {
+      "name": "Inbound (mapping)",
+      "description": "Accepts any data from another integration and maps it to title, text and level through an inbound rule (card → cog → Inbound).",
+      "fields": {
+        "rule": {
+          "name": "Rule",
+          "description": "ID of the inbound rule. All other fields of the call are available to the rule as data."
+        }
+      }
     }
   },
   "exceptions": {
+    "unknown_rule": {
+      "message": "There is no inbound rule “{rule}” with the “service” trigger. Create it in the card under cog → Inbound."
+    },
+    "not_loaded": {
+      "message": "Notification Center is not loaded."
+    },
     "unknown_recipient": {
       "message": "The recipient profile “{recipient}” does not exist. Add profiles under Settings → Devices & services → Notification Center → Configure."
     }

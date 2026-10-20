@@ -119,9 +119,63 @@
           "description": "Normal, alta o urgente. «Urgente» salta el modo silencioso en los teléfonos."
         }
       }
+    },
+    "report": {
+      "name": "Informar de un aviso",
+      "description": "Crea o actualiza un aviso en Notification Center. Pensado para integraciones sin interfaz propia (p. ej. como acción del informe de Watchman).",
+      "fields": {
+        "message": {
+          "name": "Mensaje",
+          "description": "El texto del aviso."
+        },
+        "title": {
+          "name": "Título",
+          "description": "Título opcional (por defecto: nombre de la fuente)."
+        },
+        "source": {
+          "name": "Fuente",
+          "description": "Nombre de la fuente, p. ej. Watchman. Define el icono de origen."
+        },
+        "key": {
+          "name": "Clave",
+          "description": "Misma clave = se actualiza el mismo aviso (por defecto: default)."
+        },
+        "state": {
+          "name": "Estado",
+          "description": "active (por defecto) o resolved para cerrar el aviso."
+        },
+        "severity": {
+          "name": "Nivel",
+          "description": "critical, warning, info (por defecto) u ok. Se puede cambiar en la tarjeta."
+        },
+        "domain": {
+          "name": "Integración (dominio)",
+          "description": "Dominio para el logotipo, p. ej. watchman (por defecto: nombre de la fuente)."
+        },
+        "icon": {
+          "name": "Icono",
+          "description": "Icono alternativo, p. ej. mdi:eye-check."
+        }
+      }
+    },
+    "inbound": {
+      "name": "Entrada (asignación)",
+      "description": "Acepta datos cualesquiera de otra integración y los asigna, mediante una regla de entrada (tarjeta → engranaje → Entradas), a título, texto y nivel.",
+      "fields": {
+        "rule": {
+          "name": "Regla",
+          "description": "ID de la regla de entrada. Todos los demás campos de la llamada están disponibles para la regla como data."
+        }
+      }
     }
   },
   "exceptions": {
+    "unknown_rule": {
+      "message": "No existe la regla de entrada «{rule}» con el disparador «servicio». Créala en la tarjeta, en engranaje → Entradas."
+    },
+    "not_loaded": {
+      "message": "Notification Center no está cargado."
+    },
     "unknown_recipient": {
       "message": "El perfil de destinatario «{recipient}» no existe. Añade perfiles en Ajustes → Dispositivos y servicios → Notification Center → Configurar."
     }

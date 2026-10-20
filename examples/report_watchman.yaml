@@ -1,0 +1,13 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): d4541d2355acfc8c78c6f7878ea89004cc1cdd12fb7ef481ab654309a524cf2e
+# Watchman-Bericht als Meldung im Notification Center (Aktion in einer Automation oder einem Script).
+# Hinweis: Mit einer echten Watchman-Installation nicht geprüft. Für die reine Anzahl fehlender
+# Entitäten ist die Import-Regel (Zahnrad -> Importe -> Watchman-Vorlage) der sichere Weg.
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.report
+  data:
+    source: Watchman
+    title: Watchman
+    severity: warning
+    key: report

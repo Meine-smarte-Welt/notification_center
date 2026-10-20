@@ -18,6 +18,9 @@ Eine Home-Assistant-Integration, die **Meldungen deiner Integrationen**, **Benac
 - Vier Sensoren für Listen plus Profil-Sensor, Android-Template-Widget, Schnellversand, Scripts und Blueprints
 - Karte mit Tabs, Statistik-Chips, Suche, Sortierung, Detail-Popup, Banner, Zwei-Klick-Bestätigung und frei wählbaren Farben
 - Alles in **fünf Sprachen**: Deutsch, Englisch, Niederländisch, Französisch, Spanisch
+- **Herkunft:** jede Meldung zeigt das Logo der Ursprungs-Integration (sonst das Symbol der Quelle). Ein Klick öffnet das Popup, darin die Karte der Integration (falls vorhanden) und „Integration öffnen“
+- **Stufen selbst zuordnen:** im Zahnrad legst du je Meldungsart fest, ob sie kritisch, Warnung, Info oder in Ordnung ist. **Import:** Regeln und der Service `notification_center.report` machen auch Integrationen ohne eigene Schnittstelle zu Quellen, z. B. Watchman
+- **Eingänge (Zuordnung):** Du legst selbst fest, welches Feld einer anderen Integration zu Titel, Text, Schlüssel und Stufe wird. So lässt sich jede Integration anbinden, die ein Ereignis auslöst oder eine Aktion aufruft
 
 ## Voraussetzungen
 
@@ -95,6 +98,8 @@ Alle Farben sind pro Karte einstellbar (Editor-Abschnitt *Farben*). Leer = Theme
 
 `notification_center.send` sendet eine Nachricht an ein Empfänger-Profil. „Dringend“ umgeht bei Smartphones den Lautlos-Modus (Android: Alarm-Kanal, iOS: Critical Alert), bei E-Mail steht ein Präfix im Betreff.
 
+`notification_center.report` legt eine Meldung an oder aktualisiert sie (gleicher `key` = dieselbe Meldung); mit `state: resolved` wird sie geschlossen. Damit kann jede Automation, jedes Script und jede Integration mit einer „Aktion“ melden.
+
 ```yaml
 action: notification_center.send
 data:
@@ -119,6 +124,7 @@ Integrationen sprechen das Notification Center über den Home-Assistant-Event-Bu
 - `initial: true` (Ausgangszustand nach Start/Sync) erscheint in der Karte, löst aber **keinen** Push aus.
 - Nicht auflösbare Arten (z. B. verpasster Anruf) bleiben, bis du sie quittierst; sie werden nie per Sync geschlossen.
 - Rufnummern, Namen und Texte werden nie ins Log geschrieben.
+- Die Anmeldung kann optional `domain` (Domain der Integration für das Logo) und `card` (Lovelace-Kartenkonfiguration für das Popup, höchstens 4 KB) enthalten. Eine eigene Karte, die du im Zahnrad einträgst, hat Vorrang.
 
 Beispiel einer Meldung:
 
@@ -134,6 +140,64 @@ event_data:
   subject: { id: haustuer, name: Haustür, kind: device }
   placeholders: { name: Haustür }
 ```
+
+## Import: beliebige Integrationen anbinden (z. B. Watchman)
+
+Integrationen, die das Notification Center nicht selbst ansprechen, lassen sich auf drei Wegen einbinden. Alle Wege erzeugen normale Meldungen mit Stufe, Verlauf, Quittieren und Push.
+
+1. **Import-Regel (Zahnrad → Importe):** aus einer beliebigen Entität wird eine Meldung. Modus *Zahl größer 0* (Zähler) oder *Zustand ist einer von …*. Titel und Nachricht sind optionale Vorlagen wie in Home Assistant (`{{ state }}`, `{{ name }}`, `{{ attrs.xyz }}`). Wird die Bedingung wieder falsch, schließt sich die Meldung selbst. Eine Meldung, die beim Start schon besteht, löst keinen Push aus.
+2. **Service `notification_center.report`:** für Text, den eine Integration selbst verschickt. Viele Integrationen können als Ziel eine beliebige Aktion aufrufen; trägst du dort `notification_center.report` ein, landet der Text als Meldung im Notification Center.
+3. **Ereignisse (Schema 1):** der saubere Weg für Integrationen, die das Notification Center unterstützen wollen (siehe oben). Optional kann die Anmeldung ein Feld `domain` (für das Logo) und `card` (Lovelace-Karte für das Popup) mitschicken.
+
+**Beispiel Watchman:** Im Zahnrad unter *Importe* → *Neue Regel* → *Watchman-Vorlage*. Sie überwacht `sensor.watchman_missing_entities` (Zahl fehlender Entitäten) und legt die Meldung an oder schließt sie. Für `sensor.watchman_missing_actions` dieselbe Regel noch einmal anlegen. Den ausführlichen Bericht als Text bekommst du so:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.report
+  data:
+    source: Watchman
+    title: Watchman
+    severity: warning
+    key: report
+```
+
+Laut der Watchman-Dokumentation akzeptiert `watchman.report` eine beliebige Benachrichtigungs-Aktion (`action`) mit Zusatzdaten (`data`). Ob Watchman dabei `message` und `title` so übergibt, wie `notification_center.report` es erwartet, ist **nicht an einer echten Watchman-Installation geprüft**. Funktioniert es bei dir nicht, bleibt die Import-Regel für den Zähler der sichere Weg. Lange Berichte kannst du in Watchman mit `chunk_size` aufteilen.
+
+```yaml
+action: notification_center.report
+data:
+  source: My script            # shown as the source; also decides the logo
+  title: Backup
+  message: The backup failed.
+  severity: critical           # critical | warning | info | ok
+  key: backup                  # same key = the same message is updated
+  # state: resolved            # closes the message again
+```
+
+## Eingänge: Titel, Text und Stufe selbst zuordnen
+
+Wenn Du nicht weißt oder nicht sicher ist, welche Felder eine Integration schickt, ordnest Du sie selbst zu: Zahnrad → **Eingänge** → *Neue Regel*.
+
+1. **Auslöser wählen:** ein beliebiges Home-Assistant-**Ereignis** (Name eintragen) oder ein **Service-Aufruf** an `notification_center.inbound` mit dem Feld `rule`.
+2. **Letzten Inhalt ansehen:** Sobald etwas ankommt, zeigt die Regel den zuletzt empfangenen Inhalt („Letzter Inhalt“). Dort siehst Du die echten Feldnamen.
+3. **Felder zuordnen:** Titel, Text und Schlüssel sind Vorlagen auf die empfangenen Felder, z. B. `{{ data.message }}`. Ohne Eintrag erscheint der Regelname bzw. der rohe Inhalt.
+4. **Stufe zuordnen:** entweder fest, oder aus einem Feld über eine Wertetabelle, z. B. Feld `{{ data.level }}` und Tabelle `error=critical, warning=warning`. Andere Werte bekommen die feste Stufe.
+5. **Schließen:** optional eine Bedingung wie `{{ data.count | int == 0 }}`; ist sie wahr, wird die Meldung erledigt. Gleicher Schlüssel = dieselbe Meldung wird aktualisiert.
+
+**Beispiel Watchman:** In der Regel die *Watchman-Vorlage* wählen (Auslöser Service, Text `{{ data.message }}`), speichern und `watchman.report` so aufrufen:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.inbound
+  data:
+    rule: watchman        # ID of the inbound rule (shown in the list after saving)
+```
+
+Der empfangene Inhalt wird lokal in `.storage` gespeichert (höchstens 1,5 KB je Regel) und nie ins Log geschrieben. Welche Felder Watchman tatsächlich übergibt, siehst Du nach dem ersten Bericht unter „Letzter Inhalt“. Das ist **nicht an einer echten Watchman-Installation geprüft**.
 
 ## Sensoren
 
@@ -156,11 +220,11 @@ Die großen Attribute werden nicht in der Langzeitdatenbank gespeichert.
 
 ## Versionsanzeige und Update-Hinweis
 
-Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.0.0 · Integration 1.0.0`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab (bei Beta/RC auch Pre-releases). Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
+Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.1.1b2 · Integration 1.1.1b2`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab (bei Beta/RC auch Pre-releases). Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
 
 ## Einstellungen (Zahnrad)
 
-Feste Reihenfolge der Akkordeons: **App-Version** · **Quellen** · **Optionen** (Lautlos-Modus, Zustellung) · **Wartung** (Testmeldung, alle quittieren, Verlauf leeren, jeweils mit Zwei-Klick-Bestätigung) · **Ereignisse** (Protokoll seit Start, ohne Inhalte). Ändern dürfen nur Administratoren.
+Feste Reihenfolge der Akkordeons: **App-Version** · **Quellen** · **Optionen** (Lautlos-Modus, Zustellung) · **Wartung** (Testmeldung, alle quittieren, Verlauf leeren, jeweils mit Zwei-Klick-Bestätigung) · **Ereignisse** (Protokoll seit Start, ohne Inhalte). Ändern dürfen nur Administratoren. Dazu kommen **Importe** (Regeln anlegen, bearbeiten, löschen) und je Quelle die **Stufen-Auswahl** je Meldungsart sowie die **Popup-Karte** (Lovelace-Karte als JSON).
 
 ## Android-Widget
 
@@ -180,7 +244,7 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 
 ## Bekannte Einschränkungen
 
-- **Nicht an einer echten Home-Assistant-Instanz und nicht mit echten Smartphones getestet.** Geprüft sind: die Hub-Logik gegen einen simulierten Event-Bus (14 Tests), die Karte im Headless-Browser mit Testdaten (alle Tabs, Popup, Zahnrad, fünf Sprachen, Editor) sowie Syntax und JSON. Das Zusammenspiel mit der echten Home-Assistant-Oberfläche ist **ungeprüft**.
+- **Nicht an einer echten Home-Assistant-Instanz und nicht mit echten Smartphones getestet.** Geprüft sind: die Hub-Logik gegen einen simulierten Event-Bus (27 Tests), die Karte im Headless-Browser mit Testdaten (alle Tabs, Popup, Zahnrad, fünf Sprachen, Editor) sowie Syntax und JSON. Das Zusammenspiel mit der echten Home-Assistant-Oberfläche ist **ungeprüft**.
 - **Zusammenspiel mit den Schwester-Integrationen ungeprüft:** Es wurde nur gegen simulierte Ereignisse getestet, nicht gegen echte Fritz!Box-, Zigbee2MQTT- oder Matter-Daten.
 - Ob „Dringend“ auf deinem Gerät den Lautlos-Modus wirklich umgeht, hängt von Android-/iOS-Einstellungen ab (Kanal-Berechtigungen, Nicht stören, kritische Hinweise). Bitte mit der Testmeldung ausprobieren.
 - E-Mail-Profile lassen sich für die Zustellung von Meldungen technisch wählen, E-Mail gehört aber nicht zum geprüften Umfang von 1.0.0.
@@ -188,6 +252,10 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 - Persistente Benachrichtigungen liest die Integration defensiv aus einem internen Speicher von Home Assistant; ändert sich das, bleibt die Kategorie leer.
 - Die Übersetzungen (Niederländisch, Französisch, Spanisch) sind maschinell erstellt und nicht von Muttersprachlern geprüft - Korrekturen willkommen.
 - Scripts und Blueprints werden nur angelegt; bearbeiten und löschen geschieht in Home Assistant.
+- **Neu in 1.1.1b1 ist nur mit simulierten Daten geprüft** (Hub gegen den Home-Assistant-Kern, Karte im Headless-Browser). Das Logo kommt vom Brand-Proxy von Home Assistant (`/api/brands/integration/<domain>/icon.png`); gibt es keins, erscheint das Symbol der Quelle. Beides wurde nicht an einer echten Instanz gesehen.
+- Die Popup-Karte wird über die Karten-Hilfsfunktion von Home Assistant erzeugt. Karten, die eine eigene Ressource brauchen, müssen auf deinem Dashboard geladen sein.
+- Der Import des Watchman-Berichts als Text über `notification_center.report` ist nicht mit einer echten Watchman-Installation geprüft. Importe sind auf 30 Regeln begrenzt, Vorlagen laufen mit den Rechten eines Administrators.
+- **Neu in 1.1.1b2 nur mit simulierten Daten geprüft.** Eine Eingangs-Regel braucht eine Integration, die ein Ereignis auslöst oder eine Aktion aufruft. Integrationen, die nur intern arbeiten, lassen sich nur über ihre Entitäten (Importe) anbinden. Auf 30 Regeln begrenzt; Vorlagen laufen mit Administrator-Rechten.
 
 ## Fehlerbehebung
 
@@ -204,6 +272,23 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 Jede `.py`, `.js` und `.yaml` beginnt mit einem SHA256-Header (Inhalt ab Zeile 2). Prüfen mit `tail -n +2 datei.py | sha256sum`. Die Prüfsummen der JSON-Dateien stehen in [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Versionshistorie
+
+### 1.1.1b2 (Vorabversion)
+
+- Neu: **Eingänge** (Zahnrad): Ereignis oder Service `notification_center.inbound` wird über Vorlagen Titel, Text, Schlüssel und Stufe zugeordnet, mit Wertetabelle für die Stufe, Schließbedingung und Anzeige des zuletzt empfangenen Inhalts
+- Neu: Service `notification_center.inbound` (Feld `rule`, beliebige weitere Felder)
+- Neu: Websocket-Befehle `set_inbound` und `delete_inbound` (nur Administratoren)
+- Neu: Beispiel `examples/inbound_watchman.yaml`
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
+
+### 1.1.1b1 (Vorabversion)
+
+- Neu: **Herkunft** jeder Meldung (Logo der Integration), Popup mit der **Karte der Integration** und „Integration öffnen“
+- Neu: **Stufen-Zuordnung** je Meldungsart im Zahnrad (auch für Push und Sortierung wirksam)
+- Neu: **Import** über Regeln (Zahnrad → Importe, mit Watchman-Vorlage) und den Service `notification_center.report`
+- Neu: optionale Felder `domain` und `card` in der Anmeldung (Schema 1 bleibt kompatibel)
+- Behoben: lange Texte wurden beim Zusammensetzen auf 200 Zeichen gekürzt (jetzt 2000)
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
 
 ### 1.0.0
 

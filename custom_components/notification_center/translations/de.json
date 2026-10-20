@@ -119,9 +119,63 @@
           "description": "Normal, hoch oder dringend. „Dringend“ umgeht bei Smartphones den Lautlos-Modus."
         }
       }
+    },
+    "report": {
+      "name": "Meldung melden",
+      "description": "Legt eine Meldung im Notification Center an oder aktualisiert sie. Geeignet für Integrationen ohne eigene Schnittstelle (z. B. den Bericht von Watchman als Aktion eintragen).",
+      "fields": {
+        "message": {
+          "name": "Nachricht",
+          "description": "Der Text der Meldung."
+        },
+        "title": {
+          "name": "Titel",
+          "description": "Optionaler Titel (Vorgabe: Name der Quelle)."
+        },
+        "source": {
+          "name": "Quelle",
+          "description": "Name der Quelle, z. B. Watchman. Daraus ergibt sich das Herkunfts-Icon."
+        },
+        "key": {
+          "name": "Schlüssel",
+          "description": "Gleicher Schlüssel = dieselbe Meldung wird aktualisiert (Vorgabe: default)."
+        },
+        "state": {
+          "name": "Zustand",
+          "description": "active (Vorgabe) oder resolved, um die Meldung zu schließen."
+        },
+        "severity": {
+          "name": "Stufe",
+          "description": "critical, warning, info (Vorgabe) oder ok. In der Karte änderbar."
+        },
+        "domain": {
+          "name": "Integration (Domain)",
+          "description": "Domain für das Logo, z. B. watchman (Vorgabe: Quellenname)."
+        },
+        "icon": {
+          "name": "Symbol",
+          "description": "Ersatz-Symbol, z. B. mdi:eye-check."
+        }
+      }
+    },
+    "inbound": {
+      "name": "Eingang (Zuordnung)",
+      "description": "Nimmt beliebige Daten einer anderen Integration an und ordnet sie über eine Eingangs-Regel (Karte → Zahnrad → Eingänge) Titel, Text und Stufe zu.",
+      "fields": {
+        "rule": {
+          "name": "Regel",
+          "description": "ID der Eingangs-Regel. Alle weiteren Felder des Aufrufs stehen der Regel als data zur Verfügung."
+        }
+      }
     }
   },
   "exceptions": {
+    "unknown_rule": {
+      "message": "Es gibt keine Eingangs-Regel „{rule}“ mit dem Auslöser „Service“. Lege sie in der Karte unter Zahnrad → Eingänge an."
+    },
+    "not_loaded": {
+      "message": "Notification Center ist nicht geladen."
+    },
     "unknown_recipient": {
       "message": "Das Empfänger-Profil „{recipient}“ gibt es nicht. Profile legst du unter Einstellungen → Geräte & Dienste → Notification Center → Konfigurieren an."
     }

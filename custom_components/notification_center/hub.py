@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 598f347e60134b8901944cb8c18c3431bf4e3318ca7a07eb3efd009d44f6f603
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 77fbb63f7783c17e59d1bafc81319fbdf8e94c8b13edd62709974db5f77bb548
 """Zentrale des Notification Center: Meldungen der Integrationen sammeln.
 
 Empfängt die vier Ereignisse der Schnittstelle (Schema 1, siehe README):
@@ -35,8 +35,17 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.storage import Store
 
+from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.template import Template
+from homeassistant.util import slugify
+
 from .const import (
     BUNDLE_LIMIT,
+    IMPORT_PREFIX,
+    INBOUND_PREFIX,
+    SAMPLE_BYTES,
+    MAX_CARD_BYTES,
+    SERVICE_PREFIX,
     BUNDLE_WINDOW,
     CARD_VERSION,
     CONF_CRITICAL_BYPASS,
@@ -76,6 +85,8 @@ MAX_TEXT = 200
 MAX_DATA_BYTES = 1024
 TYPE_RE = re.compile(r"^[a-z0-9_]{1,64}$")
 ICON_RE = re.compile(r"^[a-z0-9_-]{1,32}:[a-z0-9_-]{1,64}$")
+DOMAIN_RE = re.compile(r"^[a-z0-9_]{1,64}$")
+MAX_PLACEHOLDER = 2000
 PLACEHOLDER_RE = re.compile(r"\{(\w+)\}")
 
 SEVERITY_TO_URGENCY = {
@@ -140,7 +151,7 @@ def message_id(identity: str) -> str:
 
 def fill(template: str, placeholders: dict[str, Any]) -> str:
     """``{name}`` ersetzen; unbekannte Platzhalter bleiben stehen."""
-    return PLACEHOLDER_RE.sub(lambda m: _text(placeholders.get(m.group(1), m.group(0))), template)
+    return PLACEHOLDER_RE.sub(lambda m: _text(placeholders.get(m.group(1), m.group(0)), MAX_PLACEHOLDER), template)
 
 
 def pick_texts(texts: dict[str, Any], lang: str, type_: str) -> dict[str, str]:
@@ -176,6 +187,11 @@ class NotificationHub:
             "checked_at": None,
             "check_failed": False,
         }
+        # Einstellungen des Nutzers (Stufen-Zuordnung, Popup-Karten, Import-Regeln)
+        self.prefs: dict[str, Any] = {"severity_map": {}, "cards": {}, "imports": [], "inbound": []}
+        self.samples: dict[str, dict[str, str]] = {}
+        self._inbound_unsubs: list[CALLBACK_TYPE] = []
+        self._import_unsub: CALLBACK_TYPE | None = None
         self._seen: set[tuple[str, str]] = set()
         self._bundles: dict[tuple[str, str, str], dict[str, Any]] = {}
         self._warned_schema = False
@@ -191,7 +207,19 @@ class NotificationHub:
         self.acked = set(data.get("acked", []))
         for src in data.get("sources", []):
             self.sources[(src["source"], src["entry_id"])] = src
+        stored_prefs = data.get("prefs") or {}
+        self.prefs = {
+            "severity_map": dict(stored_prefs.get("severity_map", {})),
+            "cards": dict(stored_prefs.get("cards", {})),
+            "imports": list(stored_prefs.get("imports", [])),
+            "inbound": list(stored_prefs.get("inbound", [])),
+        }
+        self.samples = dict(data.get("samples", {}))
         self._register_self()
+        for rule in self.prefs["imports"]:
+            self._register_import(rule)
+        for rule in self.prefs["inbound"]:
+            self._register_inbound(rule)
         self._prune_history()
 
     @callback
@@ -207,6 +235,10 @@ class NotificationHub:
         unsub_start = async_at_started(self.hass, self._send_ping)
         if unsub_start:
             self._unsubs.append(unsub_start)
+        self._restart_inbound()
+        unsub_imports = async_at_started(self.hass, self._start_imports)
+        if unsub_imports:
+            self._unsubs.append(unsub_imports)
         self._unsubs.append(
             async_track_time_interval(
                 self.hass, self._scheduled_update_check, timedelta(hours=UPDATE_CHECK_HOURS)
@@ -218,6 +250,10 @@ class NotificationHub:
 
     @callback
     def async_stop(self) -> None:
+        self._stop_inbound()
+        if self._import_unsub:
+            self._import_unsub()
+            self._import_unsub = None
         for unsub in self._unsubs:
             unsub()
         self._unsubs.clear()
@@ -331,6 +367,18 @@ class NotificationHub:
             "texts": texts,
         }
 
+    @staticmethod
+    def _clean_card(card: Any) -> dict[str, Any] | None:
+        """Lovelace-Kartenkonfiguration der Quelle (Popup); nur ein Dict mit ``type``."""
+        if not isinstance(card, dict) or not isinstance(card.get("type"), str) or not card["type"]:
+            return None
+        try:
+            if len(json.dumps(card)) > MAX_CARD_BYTES:
+                return None
+        except (TypeError, ValueError):
+            return None
+        return card
+
     @callback
     def _on_register(self, event: Event) -> None:
         data = event.data
@@ -342,6 +390,8 @@ class NotificationHub:
             _LOGGER.debug("Ungültige Anmeldung verworfen")
             return
         icon = data.get("icon")
+        domain = data.get("domain")
+        card = data.get("card")
         clean_types = {}
         for item in types:
             if isinstance(item, dict):
@@ -355,6 +405,8 @@ class NotificationHub:
             "version": _text(data.get("version"), 32),
             "icon": icon if isinstance(icon, str) and ICON_RE.match(icon) else "mdi:bell-outline",
             "enabled": bool(data.get("enabled", True)),
+            "domain": domain if isinstance(domain, str) and DOMAIN_RE.match(domain) else None,
+            "card": self._clean_card(card),
             "types": clean_types,
             "last_seen": _now(),
         }
@@ -400,9 +452,10 @@ class NotificationHub:
             self.acked.discard(identity)
 
         catalog = (self.sources.get((source, entry_id)) or {}).get("types", {}).get(type_)
-        severity = data.get("severity")
-        if severity not in SEVERITIES:
-            severity = catalog["severity"] if catalog else "info"
+        reported = data.get("severity")
+        if reported not in SEVERITIES:
+            reported = catalog["severity"] if catalog else "info"
+        severity = self.effective_severity(source, type_, reported)
 
         subject = data.get("subject") if isinstance(data.get("subject"), dict) else {}
         placeholders = data.get("placeholders") if isinstance(data.get("placeholders"), dict) else {}
@@ -422,9 +475,10 @@ class NotificationHub:
             "type": type_,
             "key": key,
             "severity": severity,
+            "severity_reported": reported,
             "subject": {k: _text(subject.get(k), 80) for k in ("id", "name", "kind") if k in subject},
             "placeholders": {
-                _text(k, 40): _text(v, 120)
+                _text(k, 40): _text(v, MAX_PLACEHOLDER)
                 for k, v in placeholders.items()
                 if isinstance(v, (str, int, float))
             },
@@ -465,6 +519,375 @@ class NotificationHub:
         self._log("sync", source, type_)
         if changed:
             self._changed()
+
+    # ------------------------------------------------------------------
+    # Stufen-Zuordnung und Popup-Karten (vom Nutzer einstellbar)
+    # ------------------------------------------------------------------
+    def effective_severity(self, source: str, type_: str, reported: str) -> str:
+        chosen = self.prefs["severity_map"].get(f"{source}|{type_}")
+        return chosen if chosen in SEVERITIES else reported
+
+    @callback
+    def async_set_severity(self, source: str, type_: str, severity: str | None) -> None:
+        """Stufe einer Meldungsart festlegen; ``None`` stellt die Vorgabe der Quelle wieder her."""
+        key = f"{source}|{type_}"
+        if severity in SEVERITIES:
+            self.prefs["severity_map"][key] = severity
+        else:
+            self.prefs["severity_map"].pop(key, None)
+        for msg in self.messages.values():
+            if msg["source"] == source and msg["type"] == type_:
+                msg["severity"] = self.effective_severity(source, type_, msg.get("severity_reported", msg["severity"]))
+        self._changed()
+
+    @callback
+    def async_set_card(self, source: str, card: dict[str, Any] | None) -> bool:
+        if card is None:
+            self.prefs["cards"].pop(source, None)
+        else:
+            cleaned = self._clean_card(card)
+            if cleaned is None:
+                return False
+            self.prefs["cards"][source] = cleaned
+        self._changed()
+        return True
+
+    # ------------------------------------------------------------------
+    # Import: Entity-Regeln und Service
+    # ------------------------------------------------------------------
+    def _register_import(self, rule: dict[str, Any]) -> None:
+        source = IMPORT_PREFIX + rule["id"]
+        texts = {lang: {"label": rule["name"], "title": "{title}", "message": "{message}"} for lang in LANGUAGES}
+        self.sources[(source, self.entry.entry_id)] = {
+            "source": source,
+            "entry_id": self.entry.entry_id,
+            "name": rule["name"],
+            "version": "",
+            "icon": rule.get("icon") or "mdi:import",
+            "enabled": True,
+            "domain": rule.get("domain"),
+            "card": None,
+            "imported": True,
+            "types": {
+                "entity": {
+                    "type": "entity",
+                    "severity": rule["severity"],
+                    "resolvable": True,
+                    "enabled": True,
+                    "icon": rule.get("icon"),
+                    "texts": texts,
+                }
+            },
+            "last_seen": _now(),
+        }
+        self._seen.add((source, self.entry.entry_id))
+
+    @callback
+    def async_set_import(self, rule: dict[str, Any]) -> dict[str, Any]:
+        rules = self.prefs["imports"]
+        rule = dict(rule)
+        if not rule.get("id"):
+            base = slugify(rule["name"]) or "regel"
+            taken = {r["id"] for r in rules}
+            rule["id"], n = base, 2
+            while rule["id"] in taken:
+                rule["id"], n = f"{base}_{n}", n + 1
+        for i, existing in enumerate(rules):
+            if existing["id"] == rule["id"]:
+                rules[i] = rule
+                break
+        else:
+            rules.append(rule)
+        self._register_import(rule)
+        self._restart_imports()
+        self._changed()
+        return rule
+
+    @callback
+    def async_delete_import(self, rule_id: str) -> bool:
+        rules = self.prefs["imports"]
+        remaining = [r for r in rules if r["id"] != rule_id]
+        if len(remaining) == len(rules):
+            return False
+        self.prefs["imports"] = remaining
+        source = IMPORT_PREFIX + rule_id
+        for identity, msg in list(self.messages.items()):
+            if msg["source"] == source:
+                self._close(identity, "resolved")
+        self.sources.pop((source, self.entry.entry_id), None)
+        self._seen.discard((source, self.entry.entry_id))
+        self._restart_imports()
+        self._changed()
+        return True
+
+    @callback
+    def _start_imports(self, _hass: HomeAssistant | None = None) -> None:
+        self._restart_imports(initial=True)
+
+    @callback
+    def _restart_imports(self, initial: bool = False) -> None:
+        if self._import_unsub:
+            self._import_unsub()
+            self._import_unsub = None
+        rules = self.prefs["imports"]
+        if not rules:
+            return
+        entity_ids = sorted({r["entity_id"] for r in rules})
+        self._import_unsub = async_track_state_change_event(self.hass, entity_ids, self._on_import_state)
+        for rule in rules:
+            self._eval_import(rule, initial=True)
+
+    @callback
+    def _on_import_state(self, event: Event) -> None:
+        entity_id = event.data.get("entity_id")
+        new_state = event.data.get("new_state")
+        # Eine neu hinzugekommene Entität gilt als Startzustand (kein Push).
+        initial = event.data.get("old_state") is None or new_state is None
+        for rule in self.prefs["imports"]:
+            if rule["entity_id"] == entity_id:
+                self._eval_import(rule, initial=initial)
+
+    @staticmethod
+    def _import_active(rule: dict[str, Any], state: str) -> bool:
+        if rule["mode"] == "count":
+            try:
+                return float(state) > 0
+            except (TypeError, ValueError):
+                return False
+        return state in rule.get("states", [])
+
+    def _render_template(self, text: str, fallback: str, variables: dict[str, Any]) -> str:
+        if not text:
+            return fallback
+        try:
+            return _text(Template(text, self.hass).async_render(variables, parse_result=False), MAX_PLACEHOLDER)
+        except Exception:  # noqa: BLE001 - fehlerhafte Vorlage darf nichts blockieren
+            _LOGGER.debug("Vorlage der Import-Regel konnte nicht gerendert werden")
+            return fallback
+
+    @callback
+    def _eval_import(self, rule: dict[str, Any], initial: bool) -> None:
+        state_obj = self.hass.states.get(rule["entity_id"])
+        source = IMPORT_PREFIX + rule["id"]
+        base = {"schema": SCHEMA, "source": source, "entry_id": self.entry.entry_id, "type": "entity", "key": rule["entity_id"]}
+        active = state_obj is not None and self._import_active(rule, state_obj.state)
+        if not active:
+            if make_identity(source, self.entry.entry_id, "entity", rule["entity_id"]) in self.messages:
+                self.process_report({**base, "state": "resolved"})
+            return
+        variables = {
+            "state": state_obj.state,
+            "name": state_obj.name,
+            "entity_id": rule["entity_id"],
+            "attrs": dict(state_obj.attributes),
+        }
+        title = self._render_template(rule.get("title", ""), rule["name"], variables)
+        message = self._render_template(rule.get("message", ""), state_obj.state, variables)
+        self.process_report(
+            {
+                **base,
+                "state": "active",
+                "severity": rule["severity"],
+                "initial": initial,
+                "subject": {"kind": "import", "name": state_obj.name},
+                "placeholders": {"title": title, "message": message},
+            }
+        )
+
+    # ------------------------------------------------------------------
+    # Eingangs-Regeln: Ereignis oder Service -> Meldung (Zuordnung durch den Nutzer)
+    # ------------------------------------------------------------------
+    def _register_inbound(self, rule: dict[str, Any]) -> None:
+        source = INBOUND_PREFIX + rule["id"]
+        texts = {lang: {"label": rule["name"], "title": "{title}", "message": "{message}"} for lang in LANGUAGES}
+        self.sources[(source, self.entry.entry_id)] = {
+            "source": source,
+            "entry_id": self.entry.entry_id,
+            "name": rule["name"],
+            "version": "",
+            "icon": rule.get("icon") or "mdi:import",
+            "enabled": True,
+            "domain": rule.get("domain"),
+            "card": None,
+            "imported": True,
+            "types": {
+                "event": {
+                    "type": "event",
+                    "severity": rule["severity"],
+                    "resolvable": True,
+                    "enabled": True,
+                    "icon": rule.get("icon"),
+                    "texts": texts,
+                }
+            },
+            "last_seen": _now(),
+        }
+        self._seen.add((source, self.entry.entry_id))
+
+    @callback
+    def async_set_inbound(self, rule: dict[str, Any]) -> dict[str, Any]:
+        rules = self.prefs["inbound"]
+        rule = dict(rule)
+        if not rule.get("id"):
+            base = slugify(rule["name"]) or "regel"
+            taken = {r["id"] for r in rules}
+            rule["id"], n = base, 2
+            while rule["id"] in taken:
+                rule["id"], n = f"{base}_{n}", n + 1
+        for i, existing in enumerate(rules):
+            if existing["id"] == rule["id"]:
+                rules[i] = rule
+                break
+        else:
+            rules.append(rule)
+        self._register_inbound(rule)
+        self._restart_inbound()
+        self._changed()
+        return rule
+
+    @callback
+    def async_delete_inbound(self, rule_id: str) -> bool:
+        rules = self.prefs["inbound"]
+        remaining = [r for r in rules if r["id"] != rule_id]
+        if len(remaining) == len(rules):
+            return False
+        self.prefs["inbound"] = remaining
+        self.samples.pop(rule_id, None)
+        source = INBOUND_PREFIX + rule_id
+        for identity, msg in list(self.messages.items()):
+            if msg["source"] == source:
+                self._close(identity, "resolved")
+        self.sources.pop((source, self.entry.entry_id), None)
+        self._seen.discard((source, self.entry.entry_id))
+        self._restart_inbound()
+        self._changed()
+        return True
+
+    @callback
+    def _stop_inbound(self) -> None:
+        for unsub in self._inbound_unsubs:
+            unsub()
+        self._inbound_unsubs.clear()
+
+    @callback
+    def _restart_inbound(self) -> None:
+        self._stop_inbound()
+        event_types = sorted({r["event_type"] for r in self.prefs["inbound"] if r.get("trigger") == "event" and r.get("event_type")})
+        for event_type in event_types:
+            self._inbound_unsubs.append(self.hass.bus.async_listen(event_type, self._on_inbound_event))
+
+    @callback
+    def _on_inbound_event(self, event: Event) -> None:
+        data = dict(event.data) if isinstance(event.data, dict) else {}
+        for rule in self.prefs["inbound"]:
+            if rule.get("trigger") == "event" and rule.get("event_type") == event.event_type:
+                self._handle_inbound(rule, data, event.event_type)
+
+    @callback
+    def async_inbound_service(self, rule_id: str, data: dict[str, Any]) -> bool:
+        """Service ``notification_center.inbound``: Aufruf einer anderen Integration einer Regel zuordnen."""
+        for rule in self.prefs["inbound"]:
+            if rule["id"] == rule_id and rule.get("trigger") == "service":
+                self._handle_inbound(rule, dict(data), "service")
+                return True
+        return False
+
+    @staticmethod
+    def _truthy(value: str) -> bool:
+        return value.strip().casefold() in ("true", "1", "yes", "on", "ja")
+
+    def _keep_sample(self, rule_id: str, data: dict[str, Any]) -> None:
+        try:
+            text = json.dumps(data, ensure_ascii=False, default=str, indent=2)
+        except (TypeError, ValueError):
+            text = str(data)
+        self.samples[rule_id] = {"time": _now(), "data": text[:SAMPLE_BYTES]}
+
+    @callback
+    def _handle_inbound(self, rule: dict[str, Any], data: dict[str, Any], event_type: str) -> None:
+        # Der Inhalt wird nur lokal gespeichert (Beispielanzeige in der Karte), nie ins Log geschrieben.
+        self._keep_sample(rule["id"], data)
+        variables = {"data": data, "event_type": event_type}
+        source = INBOUND_PREFIX + rule["id"]
+        key = self._render_template(rule.get("key", ""), "default", variables).strip() or "default"
+        base = {"schema": SCHEMA, "source": source, "entry_id": self.entry.entry_id, "type": "event", "key": key}
+        resolve = rule.get("resolve_when", "")
+        if resolve and self._truthy(self._render_template(resolve, "", variables)):
+            self.process_report({**base, "state": "resolved"})
+            self._changed()
+            return
+        severity = rule["severity"]
+        field = rule.get("severity_field", "")
+        if field:
+            value = self._render_template(field, "", variables).strip().casefold()
+            mapping = {str(k).strip().casefold(): v for k, v in (rule.get("severity_map") or {}).items()}
+            if mapping.get(value) in SEVERITIES:
+                severity = mapping[value]
+        title = self._render_template(rule.get("title", ""), rule["name"], variables)
+        fallback_msg = _text(json.dumps(data, ensure_ascii=False, default=str), MAX_PLACEHOLDER)
+        message = self._render_template(rule.get("message", ""), fallback_msg, variables)
+        self.process_report(
+            {
+                **base,
+                "state": "active",
+                "severity": severity,
+                "subject": {"kind": "inbound", "name": rule["name"]},
+                "placeholders": {"title": title, "message": message},
+            }
+        )
+        self._changed()
+
+    @callback
+    def async_service_report(self, data: dict[str, Any]) -> None:
+        """Service ``notification_center.report``: beliebige Integration oder Automation meldet."""
+        name = _text(data.get("source") or "Service", 60)
+        slug = slugify(name) or "service"
+        source = SERVICE_PREFIX + slug
+        domain = data.get("domain") or slug
+        icon = data.get("icon")
+        severity = data.get("severity") if data.get("severity") in SEVERITIES else "info"
+        key = _text(data.get("key") or "default", 120)
+        entry_id = self.entry.entry_id
+        texts = {lang: {"label": name, "title": "{title}", "message": "{message}"} for lang in LANGUAGES}
+        self.sources[(source, entry_id)] = {
+            "source": source,
+            "entry_id": entry_id,
+            "name": name,
+            "version": "",
+            "icon": icon if isinstance(icon, str) and ICON_RE.match(icon) else "mdi:bell-outline",
+            "enabled": True,
+            "domain": domain if isinstance(domain, str) and DOMAIN_RE.match(domain) else None,
+            "card": None,
+            "imported": True,
+            "types": {
+                "report": {
+                    "type": "report",
+                    "severity": severity,
+                    "resolvable": True,
+                    "enabled": True,
+                    "icon": None,
+                    "texts": texts,
+                }
+            },
+            "last_seen": _now(),
+        }
+        self._seen.add((source, entry_id))
+        self.process_report(
+            {
+                "schema": SCHEMA,
+                "source": source,
+                "entry_id": entry_id,
+                "type": "report",
+                "key": key,
+                "state": data.get("state", "active"),
+                "severity": severity,
+                "subject": {"kind": "service", "name": name},
+                "placeholders": {
+                    "title": _text(data.get("title") or name, MAX_PLACEHOLDER),
+                    "message": _text(data.get("message"), MAX_PLACEHOLDER),
+                },
+            }
+        )
 
     # ------------------------------------------------------------------
     # Schließen, Quittieren, Verlauf
@@ -620,6 +1043,8 @@ class NotificationHub:
             "history": self.history,
             "acked": sorted(self.acked),
             "sources": [s for s in self.sources.values() if s["source"] != SELF_SOURCE],
+            "prefs": self.prefs,
+            "samples": self.samples,
         }
 
     def _item(self, msg: dict[str, Any]) -> dict[str, Any]:
@@ -636,6 +1061,9 @@ class NotificationHub:
             "source_name": source.get("name") or msg["source"],
             "type": msg["type"],
             "icon": catalog.get("icon") or source.get("icon"),
+            "source_icon": source.get("icon"),
+            "source_domain": source.get("domain") or msg["source"],
+            "has_card": self.card_for(msg["source"], source) is not None,
             "created_at": msg["created"],
             "resolvable": bool(catalog.get("resolvable", False)),
         }
@@ -645,6 +1073,13 @@ class NotificationHub:
             item["closed_at"] = msg["closed"]
             item["status"] = msg.get("status")
         return item
+
+    def card_for(self, source_id: str, src: dict[str, Any] | None = None) -> dict[str, Any] | None:
+        """Karte für das Popup: Wahl des Nutzers vor der Angabe der Quelle."""
+        user = self.prefs["cards"].get(source_id)
+        if user:
+            return user
+        return (src or {}).get("card")
 
     def items(self) -> list[dict[str, Any]]:
         order = {s: i for i, s in enumerate(SEVERITIES)}
@@ -670,10 +1105,16 @@ class NotificationHub:
                     "icon": src["icon"],
                     "enabled": src["enabled"],
                     "seen": (source, entry_id) in self._seen,
+                    "domain": src.get("domain") or source,
+                    "imported": bool(src.get("imported")),
+                    "card": self.card_for(source, src),
+                    "card_custom": source in self.prefs["cards"],
                     "types": [
                         {
                             "type": t["type"],
-                            "severity": t["severity"],
+                            "severity": self.effective_severity(source, t["type"], t["severity"]),
+                            "default_severity": t["severity"],
+                            "overridden": f"{source}|{t['type']}" in self.prefs["severity_map"],
                             "icon": t["icon"],
                             "enabled": t["enabled"] and src["enabled"],
                             "label": pick_texts(t["texts"], self.language, t["type"])["label"],
@@ -703,6 +1144,10 @@ class NotificationHub:
                 "history_days": int(self.options.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS)),
                 "history_max": int(self.options.get(CONF_HISTORY_MAX, DEFAULT_HISTORY_MAX)),
                 "profiles": profiles,
+                "imports": list(self.prefs["imports"]),
+                "inbound": [
+                    {**r, "sample": self.samples.get(r["id"], {})} for r in self.prefs["inbound"]
+                ],
                 "delivery": {s: self.delivery_for(s) for s in SEVERITIES},
             },
             "app": {

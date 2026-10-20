@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): b838b870cf31cc512cfc8ce362a17358986cb0cb207b3e847350e762cde854dd
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 62f63c4e93c2ec5336af5485fe5cb64d69db867c8468e34c96047dd6f91114ac
 """Websocket-Befehle des Notification Center (nur für Administratoren).
 
 ``notification_center/create_blueprint`` schreibt einen aus der Karte
@@ -14,6 +14,7 @@ geladen.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
@@ -42,6 +43,9 @@ from .const import (
     CONF_RECIPIENTS,
     CONF_SILENT,
     DOMAIN,
+    IMPORT_MODES,
+    MAX_IMPORTS,
+    MAX_INBOUND,
     SEVERITIES,
     URGENCIES,
     URGENCY_NORMAL,
@@ -58,6 +62,57 @@ WS_SET_SETTING = "notification_center/set_setting"
 WS_SET_DELIVERY = "notification_center/set_delivery"
 WS_SEND_TEST = "notification_center/send_test"
 WS_CHECK_UPDATE = "notification_center/check_update"
+WS_SET_SEVERITY = "notification_center/set_severity"
+WS_SET_CARD = "notification_center/set_card"
+WS_SET_IMPORT = "notification_center/set_import"
+WS_DELETE_IMPORT = "notification_center/delete_import"
+WS_SET_INBOUND = "notification_center/set_inbound"
+WS_DELETE_INBOUND = "notification_center/delete_inbound"
+
+def _event_type(value: Any) -> str:
+    value = str(value).strip()
+    if not re.match(r"^[A-Za-z0-9_.:-]{1,80}$", value):
+        raise vol.Invalid("Ungültiger Ereignisname")
+    if value.startswith("notification_center_"):
+        raise vol.Invalid("Eigene Ereignisse des Notification Center sind nicht erlaubt")
+    return value
+
+
+_INBOUND_SCHEMA = vol.Schema(
+    {
+        vol.Optional("id"): vol.All(str, vol.Match(r"^[a-z0-9_]{1,40}$")),
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=60)),
+        vol.Required("trigger"): vol.In(["event", "service"]),
+        vol.Optional("event_type", default=""): vol.Any("", _event_type),
+        vol.Required("severity"): vol.In(SEVERITIES),
+        vol.Optional("severity_field", default=""): vol.All(str, vol.Length(max=300)),
+        vol.Optional("severity_map", default=dict): vol.All(
+            {vol.All(str, vol.Length(min=1, max=60)): vol.In(SEVERITIES)}, vol.Length(max=20)
+        ),
+        vol.Optional("title", default=""): vol.All(str, vol.Length(max=300)),
+        vol.Optional("message", default=""): vol.All(str, vol.Length(max=1000)),
+        vol.Optional("key", default=""): vol.All(str, vol.Length(max=300)),
+        vol.Optional("resolve_when", default=""): vol.All(str, vol.Length(max=300)),
+        vol.Optional("domain"): vol.All(str, vol.Match(r"^[a-z0-9_]{1,64}$")),
+        vol.Optional("icon"): vol.All(str, vol.Match(r"^[a-z0-9_-]{1,32}:[a-z0-9_-]{1,64}$")),
+    }
+)
+
+_ENTITY_RE = r"^[a-z0-9_]+\.[a-z0-9_]+$"
+_IMPORT_SCHEMA = vol.Schema(
+    {
+        vol.Optional("id"): vol.All(str, vol.Match(r"^[a-z0-9_]{1,40}$")),
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=60)),
+        vol.Required("entity_id"): vol.All(str, vol.Match(_ENTITY_RE)),
+        vol.Required("mode"): vol.In(IMPORT_MODES),
+        vol.Optional("states", default=list): vol.All([vol.All(str, vol.Length(max=60))], vol.Length(max=10)),
+        vol.Required("severity"): vol.In(SEVERITIES),
+        vol.Optional("title", default=""): vol.All(str, vol.Length(max=300)),
+        vol.Optional("message", default=""): vol.All(str, vol.Length(max=1000)),
+        vol.Optional("domain"): vol.All(str, vol.Match(r"^[a-z0-9_]{1,64}$")),
+        vol.Optional("icon"): vol.All(str, vol.Match(r"^[a-z0-9_-]{1,32}:[a-z0-9_-]{1,64}$")),
+    }
+)
 
 _SETTING_KEYS = {"silent_mode": CONF_SILENT, "critical_bypass": CONF_CRITICAL_BYPASS}
 
@@ -314,6 +369,120 @@ async def ws_check_update(hass: HomeAssistant, connection: websocket_api.ActiveC
     connection.send_result(msg["id"], await hub.async_check_update())
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_SET_SEVERITY,
+        vol.Required("source"): vol.All(str, vol.Length(min=1, max=64)),
+        vol.Required("msg_type"): vol.All(str, vol.Match(r"^[a-z0-9_]{1,64}$")),
+        vol.Required("severity"): vol.In([*SEVERITIES, ""]),
+    }
+)
+@callback
+def ws_set_severity(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Stufe einer Meldungsart zuordnen (leer = Vorgabe der Quelle)."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hub.async_set_severity(msg["source"], msg["msg_type"], msg["severity"] or None)
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_SET_CARD,
+        vol.Required("source"): vol.All(str, vol.Length(min=1, max=64)),
+        vol.Required("card"): vol.Any(None, dict),
+    }
+)
+@callback
+def ws_set_card(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Karte für das Popup einer Quelle festlegen (``null`` entfernt die eigene Wahl)."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    if not hub.async_set_card(msg["source"], msg["card"]):
+        connection.send_error(msg["id"], "invalid_card", "Die Karte braucht ein Feld „type“ und darf höchstens 4 KB groß sein.")
+        return
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_SET_IMPORT, vol.Required("rule"): dict})
+@callback
+def ws_set_import(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Import-Regel anlegen oder ändern."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    try:
+        rule = _IMPORT_SCHEMA(msg["rule"])
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid_rule", str(err))
+        return
+    known = {r["id"] for r in hub.prefs["imports"]}
+    if rule.get("id") not in known and len(known) >= MAX_IMPORTS:
+        connection.send_error(msg["id"], "too_many", f"Es sind höchstens {MAX_IMPORTS} Import-Regeln möglich.")
+        return
+    saved = hub.async_set_import(rule)
+    connection.send_result(msg["id"], {"id": saved["id"]})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_DELETE_IMPORT, vol.Required("id"): str})
+@callback
+def ws_delete_import(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hub.async_delete_import(msg["id"])
+    connection.send_result(msg["id"], {})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_SET_INBOUND, vol.Required("rule"): dict})
+@callback
+def ws_set_inbound(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Eingangs-Regel (Ereignis/Service -> Meldung) anlegen oder ändern."""
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    try:
+        rule = _INBOUND_SCHEMA(msg["rule"])
+    except vol.Invalid as err:
+        connection.send_error(msg["id"], "invalid_rule", str(err))
+        return
+    if rule["trigger"] == "event" and not rule["event_type"]:
+        connection.send_error(msg["id"], "invalid_rule", "Für den Auslöser „Ereignis“ fehlt der Ereignisname.")
+        return
+    if rule["trigger"] == "service":
+        rule["event_type"] = ""
+    known = {r["id"] for r in hub.prefs["inbound"]}
+    if rule.get("id") not in known and len(known) >= MAX_INBOUND:
+        connection.send_error(msg["id"], "too_many", f"Es sind höchstens {MAX_INBOUND} Eingangs-Regeln möglich.")
+        return
+    saved = hub.async_set_inbound(rule)
+    connection.send_result(msg["id"], {"id": saved["id"]})
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): WS_DELETE_INBOUND, vol.Required("id"): str})
+@callback
+def ws_delete_inbound(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    _entry, hub = _get_hub(hass)
+    if hub is None:
+        connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
+        return
+    hub.async_delete_inbound(msg["id"])
+    connection.send_result(msg["id"], {})
+
+
 def async_register_websocket(hass: HomeAssistant) -> None:
     """Befehle registrieren (einmalig)."""
     for command in (
@@ -326,5 +495,11 @@ def async_register_websocket(hass: HomeAssistant) -> None:
         ws_set_delivery,
         ws_send_test,
         ws_check_update,
+        ws_set_severity,
+        ws_set_card,
+        ws_set_import,
+        ws_delete_import,
+        ws_set_inbound,
+        ws_delete_inbound,
     ):
         websocket_api.async_register_command(hass, command)

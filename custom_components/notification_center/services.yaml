@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 2e1e94b8d6a0cc863a4a7576e0d9ceb60cd10eac8a9e66f0d409bece2ba6fcd2
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 6110ef72424ccd70dc0a69e1809f6dcfdc92ccce7b0eff283dfa8f74e8912446
 send:
   fields:
     recipient:
@@ -27,3 +27,64 @@ send:
             - normal
             - high
             - critical
+
+report:
+  fields:
+    message:
+      required: true
+      example: "3 fehlende Entitäten"
+      selector:
+        text:
+          multiline: true
+    title:
+      required: false
+      example: "Watchman-Bericht"
+      selector:
+        text:
+    source:
+      required: false
+      example: "Watchman"
+      selector:
+        text:
+    key:
+      required: false
+      example: "default"
+      selector:
+        text:
+    state:
+      required: false
+      default: active
+      selector:
+        select:
+          options:
+            - active
+            - resolved
+    severity:
+      required: false
+      default: info
+      selector:
+        select:
+          translation_key: severity
+          options:
+            - critical
+            - warning
+            - info
+            - ok
+    domain:
+      required: false
+      example: "watchman"
+      selector:
+        text:
+    icon:
+      required: false
+      example: "mdi:eye-check"
+      selector:
+        icon:
+
+inbound:
+  fields:
+    rule:
+      required: true
+      example: "watchman"
+      selector:
+        text:

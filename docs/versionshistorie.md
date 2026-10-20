@@ -1,6 +1,29 @@
 # Versionshistorie
 
-> Neueste Version zuerst. Der Eintrag 1.0.0 steht auch in den fünf README-Dateien.
+> Neueste Version zuerst. Die Einträge 1.1.1b2, 1.1.1b1 und 1.0.0 stehen auch in den fünf README-Dateien.
+
+### 1.1.1b2 (Vorabversion) - Eingänge: Zuordnung selbst festlegen
+
+- **Eingänge (Zahnrad):** Ein beliebiges Home-Assistant-Ereignis oder der neue Service `notification_center.inbound` (Feld `rule`, beliebige weitere Felder) wird über Vorlagen Titel, Text und Schlüssel zugeordnet
+- **Stufe zuordnen:** fest, oder aus einem Feld über eine Wertetabelle (z. B. `error=critical, warning=warning`)
+- **Schließbedingung** als Vorlage (z. B. `{{ data.count | int == 0 }}`), gleicher Schlüssel aktualisiert dieselbe Meldung
+- **Letzter Inhalt:** Jede Regel zeigt den zuletzt empfangenen Inhalt, damit die echten Feldnamen sichtbar sind (lokal gespeichert, höchstens 1,5 KB, nie im Log)
+- Watchman-Vorlage auch für Eingänge; Beispiel `examples/inbound_watchman.yaml`
+- **Neue Websocket-Befehle (nur Administratoren):** `set_inbound`, `delete_inbound`
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
+
+### 1.1.1b1 (Vorabversion) - Herkunft, Stufen-Zuordnung, Import
+
+- **Herkunft:** Jede Meldung zeigt das Logo der Ursprungs-Integration (Brand-Proxy von Home Assistant, sonst das Symbol der Quelle) in der Liste und im Popup
+- **Popup mit Integrations-Karte:** Der Klick auf eine Meldung öffnet das Popup. Hat die Quelle eine Karte (Feld `card` in der Anmeldung) oder hast du im Zahnrad eine eingetragen, erscheint sie darin. Dazu der Knopf „Integration öffnen“
+- **Stufen-Zuordnung:** Im Zahnrad (Quellen) legst du je Meldungsart fest, ob sie kritisch, Warnung, Info oder in Ordnung ist. Die Wahl gilt für Liste, Sortierung, Chips und Push; „Vorgabe“ stellt die Stufe der Quelle wieder her. Offene Meldungen werden sofort umgestellt
+- **Import:** Neuer Bereich **Importe** im Zahnrad. Regeln machen aus beliebigen Entitäten Meldungen (Modus Zahl größer 0 oder Zustand ist einer von …, Titel und Nachricht als Home-Assistant-Vorlage, Stufe, Logo-Domain). Die Watchman-Vorlage füllt das Formular für `sensor.watchman_missing_entities`
+- **Neuer Service `notification_center.report`:** meldet Text von Automationen, Scripts und Integrationen, die eine beliebige Aktion aufrufen können (z. B. `watchman.report` mit `action`). Gleicher `key` aktualisiert dieselbe Meldung, `state: resolved` schließt sie
+- **Schnittstelle:** Die Anmeldung kennt optional `domain` und `card` (Schema 1 bleibt kompatibel)
+- **Neue Websocket-Befehle (nur Administratoren):** `set_severity`, `set_card`, `set_import`, `delete_import`
+- Behoben: Texte aus Platzhaltern wurden beim Zusammensetzen auf 200 Zeichen gekürzt (jetzt 2000)
+- Die Einstellungen (Stufen, Popup-Karten, Import-Regeln) liegen im Speicher der Integration und überstehen Neustarts
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
 
 ### 1.0.0 - Meldungen der Integrationen, Lautlos-Modus, Zahnrad, fünf Sprachen
 

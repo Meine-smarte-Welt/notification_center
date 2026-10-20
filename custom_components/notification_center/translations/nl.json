@@ -119,9 +119,63 @@
           "description": "Normaal, hoog of dringend. „Dringend” omzeilt op telefoons de stille modus."
         }
       }
+    },
+    "report": {
+      "name": "Melding doorgeven",
+      "description": "Maakt een melding aan of werkt deze bij in het Notification Center. Bedoeld voor integraties zonder eigen interface (bijv. als actie van het Watchman-rapport).",
+      "fields": {
+        "message": {
+          "name": "Bericht",
+          "description": "De tekst van de melding."
+        },
+        "title": {
+          "name": "Titel",
+          "description": "Optionele titel (standaard: naam van de bron)."
+        },
+        "source": {
+          "name": "Bron",
+          "description": "Naam van de bron, bijv. Watchman. Bepaalt het herkomstpictogram."
+        },
+        "key": {
+          "name": "Sleutel",
+          "description": "Zelfde sleutel = dezelfde melding wordt bijgewerkt (standaard: default)."
+        },
+        "state": {
+          "name": "Status",
+          "description": "active (standaard) of resolved om de melding te sluiten."
+        },
+        "severity": {
+          "name": "Niveau",
+          "description": "critical, warning, info (standaard) of ok. Aanpasbaar in de kaart."
+        },
+        "domain": {
+          "name": "Integratie (domein)",
+          "description": "Domein voor het logo, bijv. watchman (standaard: bronnaam)."
+        },
+        "icon": {
+          "name": "Pictogram",
+          "description": "Reservepictogram, bijv. mdi:eye-check."
+        }
+      }
+    },
+    "inbound": {
+      "name": "Invoer (toewijzing)",
+      "description": "Neemt willekeurige gegevens van een andere integratie aan en wijst ze via een invoerregel (kaart → tandwiel → Invoer) toe aan titel, tekst en niveau.",
+      "fields": {
+        "rule": {
+          "name": "Regel",
+          "description": "ID van de invoerregel. Alle andere velden van de aanroep zijn als data beschikbaar voor de regel."
+        }
+      }
     }
   },
   "exceptions": {
+    "unknown_rule": {
+      "message": "Er is geen invoerregel „{rule}” met de trigger „service”. Maak die aan in de kaart onder tandwiel → Invoer."
+    },
+    "not_loaded": {
+      "message": "Notification Center is niet geladen."
+    },
     "unknown_recipient": {
       "message": "Het ontvangersprofiel „{recipient}” bestaat niet. Maak profielen aan onder Instellingen → Apparaten en diensten → Notification Center → Configureren."
     }

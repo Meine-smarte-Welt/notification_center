@@ -18,6 +18,9 @@ Una integración de Home Assistant que reúne los **mensajes de tus integracione
 - Cuatro sensores de lista más un sensor de perfiles, widget de plantilla de Android, envío rápido, scripts y blueprints
 - Tarjeta con pestañas, chips estadísticos, búsqueda, ordenación, ventana de detalle, banner, confirmación con dos clics y colores libres
 - Todo en **cinco idiomas**: alemán, inglés, neerlandés, francés, español
+- **Origen:** cada aviso muestra el logotipo de la integración de origen (si no, el icono de la fuente). Un clic abre la ventana con la tarjeta de la integración (si existe) y «Abrir integración»
+- **Asignar tú los niveles:** en el engranaje decides por tipo de aviso si es crítico, advertencia, info o correcto. **Importación:** reglas y el servicio `notification_center.report` convierten integraciones sin interfaz propia en fuentes, p. ej. Watchman
+- **Entradas (asignación):** tú decides qué campo de otra integración es título, texto, clave y nivel. Así se conecta cualquier integración que dispare un evento o llame a una acción
 
 ## Requisitos
 
@@ -95,6 +98,8 @@ Todos los colores se ajustan por tarjeta (sección *Colores* del editor). Vacío
 
 `notification_center.send` envía un mensaje a un perfil de destinatario. «Urgente» salta el modo silencioso en los teléfonos (Android: canal de alarma, iOS: Critical Alert); en el correo se añade un prefijo al asunto.
 
+`notification_center.report` crea o actualiza un aviso (misma `key` = mismo aviso); con `state: resolved` se cierra. Cualquier automatización, script o integración que pueda llamar a una «acción» puede informar así.
+
 ```yaml
 action: notification_center.send
 data:
@@ -119,6 +124,7 @@ Las integraciones se dirigen al Notification Center mediante el bus de eventos d
 - `initial: true` (estado inicial tras el arranque/sync) aparece en la tarjeta pero **no** dispara push.
 - Los tipos no resolubles (p. ej. llamada perdida) permanecen hasta que los confirmes; la sync nunca los cierra.
 - Los números de teléfono, nombres y textos nunca se escriben en el registro.
+- El registro puede incluir opcionalmente `domain` (dominio de la integración para el logotipo) y `card` (configuración de tarjeta Lovelace para la ventana, máx. 4 KB). Una tarjeta que escribas en el engranaje tiene prioridad.
 
 Ejemplo de un mensaje:
 
@@ -134,6 +140,64 @@ event_data:
   subject: { id: haustuer, name: Haustür, kind: device }
   placeholders: { name: Haustür }
 ```
+
+## Importación: conectar cualquier integración (p. ej. Watchman)
+
+Las integraciones que no hablan por sí mismas con Notification Center se conectan de tres maneras. Todas crean avisos normales con nivel, historial, confirmación y push.
+
+1. **Regla de importación (engranaje → Importaciones):** convierte cualquier entidad en un aviso. Modo *número mayor que 0* (contador) o *el estado es uno de …*. El título y el mensaje son plantillas opcionales como en Home Assistant (`{{ state }}`, `{{ name }}`, `{{ attrs.xyz }}`). Cuando la condición vuelve a ser falsa, el aviso se cierra solo. Un aviso que ya existe al arrancar no dispara push.
+2. **Servicio `notification_center.report`:** para el texto que una integración envía por sí misma. Muchas integraciones pueden llamar a cualquier acción como destino; escribe ahí `notification_center.report` y el texto llega como aviso a Notification Center.
+3. **Eventos (esquema 1):** la vía limpia para integraciones que quieran admitir Notification Center (ver arriba). El registro puede incluir opcionalmente `domain` (para el logotipo) y `card` (tarjeta Lovelace para la ventana).
+
+**Ejemplo Watchman:** en el engranaje, en *Importaciones* → *Nueva regla* → *Plantilla de Watchman*. Vigila `sensor.watchman_missing_entities` (número de entidades que faltan) y crea o cierra el aviso. Crea la misma regla para `sensor.watchman_missing_actions`. El informe detallado en texto se obtiene así:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.report
+  data:
+    source: Watchman
+    title: Watchman
+    severity: warning
+    key: report
+```
+
+Según la documentación de Watchman, `watchman.report` acepta cualquier acción de notificación (`action`) con datos adicionales (`data`). Que Watchman pase `message` y `title` como espera `notification_center.report` **no está probado con una instalación real de Watchman**. Si no te funciona, la regla de importación para el contador sigue siendo la vía segura. Los informes largos se pueden dividir en Watchman con `chunk_size`.
+
+```yaml
+action: notification_center.report
+data:
+  source: My script            # shown as the source; also decides the logo
+  title: Backup
+  message: The backup failed.
+  severity: critical           # critical | warning | info | ok
+  key: backup                  # same key = the same message is updated
+  # state: resolved            # closes the message again
+```
+
+## Entradas: asignar tú mismo título, texto y nivel
+
+Si no sabes (o no estás seguro) qué campos envía una integración, asígnalos tú: engranaje → **Entradas** → *Nueva regla*.
+
+1. **Elegir el disparador:** cualquier **evento** de Home Assistant (escribe su nombre) o una **llamada de servicio** a `notification_center.inbound` con el campo `rule`.
+2. **Ver el último contenido:** en cuanto llegue algo, la regla muestra el último contenido recibido («Último contenido»). Ahí ves los nombres reales de los campos.
+3. **Asignar los campos:** título, texto y clave son plantillas sobre los campos recibidos, p. ej. `{{ data.message }}`. Sin entrada se muestra el nombre de la regla o el contenido en bruto.
+4. **Asignar el nivel:** fijo, o desde un campo mediante una tabla de valores, p. ej. campo `{{ data.level }}` y tabla `error=critical, warning=warning`. Los demás valores reciben el nivel fijo.
+5. **Cerrar:** opcionalmente una condición como `{{ data.count | int == 0 }}`; si es verdadera, el aviso se cierra. Misma clave = se actualiza el mismo aviso.
+
+**Ejemplo Watchman:** elige en la regla la *plantilla de Watchman* (disparador servicio, texto `{{ data.message }}`), guarda y llama a `watchman.report` así:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.inbound
+  data:
+    rule: watchman        # ID of the inbound rule (shown in the list after saving)
+```
+
+El contenido recibido se guarda localmente en `.storage` (máx. 1,5 KB por regla) y nunca se escribe en el registro. Los campos que Watchman pasa de verdad los ves tras el primer informe en «Último contenido». **No está probado con una instalación real de Watchman**.
 
 ## Sensores
 
@@ -156,11 +220,11 @@ Los atributos grandes no se guardan en la base de datos a largo plazo.
 
 ## Indicación de versión y aviso de actualización
 
-La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.0.0 · Integración 1.0.0`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas (con versiones preliminares para beta/RC). Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
+La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.1.1b2 · Integración 1.1.1b2`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas (con versiones preliminares para beta/RC). Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
 
 ## Ajustes (engranaje)
 
-Orden fijo de los acordeones: **Versión de la aplicación** · **Orígenes** · **Opciones** (modo silencioso, entrega) · **Mantenimiento** (mensaje de prueba, confirmar todo, vaciar historial, cada uno con confirmación de dos clics) · **Eventos** (registro desde el inicio, sin contenido). Solo los administradores pueden cambiar cosas.
+Orden fijo de los acordeones: **Versión de la aplicación** · **Orígenes** · **Opciones** (modo silencioso, entrega) · **Mantenimiento** (mensaje de prueba, confirmar todo, vaciar historial, cada uno con confirmación de dos clics) · **Eventos** (registro desde el inicio, sin contenido). Solo los administradores pueden cambiar cosas. Además, **Importaciones** (crear, editar y borrar reglas) y, por fuente, la **elección del nivel** por tipo de aviso y la **tarjeta emergente** (tarjeta Lovelace en JSON).
 
 ## Widget de Android
 
@@ -180,7 +244,7 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 
 ## Limitaciones conocidas
 
-- **No probado en una instancia real de Home Assistant ni con teléfonos reales.** Comprobado: la lógica del hub contra un bus de eventos simulado (14 pruebas), la tarjeta en un navegador sin interfaz con datos de prueba (todas las pestañas, ventana, engranaje, cinco idiomas, editor) y sintaxis/JSON. El comportamiento en la interfaz real de Home Assistant está **sin comprobar**.
+- **No probado en una instancia real de Home Assistant ni con teléfonos reales.** Comprobado: la lógica del hub contra un bus de eventos simulado (27 pruebas), la tarjeta en un navegador sin interfaz con datos de prueba (todas las pestañas, ventana, engranaje, cinco idiomas, editor) y sintaxis/JSON. El comportamiento en la interfaz real de Home Assistant está **sin comprobar**.
 - **La interacción con las integraciones hermanas está sin comprobar:** solo se usaron eventos simulados, no datos reales de Fritz!Box, Zigbee2MQTT o Matter.
 - Que «Urgente» salte realmente el modo silencioso en tu dispositivo depende de los ajustes de Android/iOS (permisos de canal, No molestar, alertas críticas). Pruébalo con el mensaje de prueba.
 - Los perfiles de correo se pueden elegir técnicamente para la entrega, pero el correo no forma parte del alcance probado de la 1.0.0.
@@ -188,6 +252,10 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 - Las notificaciones persistentes se leen de forma defensiva de un almacén interno de Home Assistant; si eso cambia, la categoría queda vacía.
 - Las traducciones al neerlandés, francés y español son automáticas y no están revisadas por hablantes nativos - se agradecen correcciones.
 - Los scripts y blueprints solo se crean; editar y borrar se hace en Home Assistant.
+- **Lo nuevo de 1.1.1b1 solo está probado con datos simulados** (hub contra el núcleo de Home Assistant, tarjeta en un navegador headless). El logotipo viene del proxy de marcas de Home Assistant (`/api/brands/integration/<domain>/icon.png`); si no hay, se muestra el icono de la fuente. Ninguno de los dos se ha visto en una instancia real.
+- La tarjeta emergente se crea con el asistente de tarjetas de Home Assistant. Las tarjetas que necesiten su propio recurso deben estar cargadas en tu panel.
+- La importación del informe de Watchman como texto con `notification_center.report` no está probada con una instalación real de Watchman. Las importaciones se limitan a 30 reglas; las plantillas se ejecutan con derechos de administrador.
+- **Lo nuevo de 1.1.1b2 solo está probado con datos simulados.** Una regla de entrada necesita una integración que dispare un evento o llame a una acción. Las integraciones que solo trabajan internamente solo se conectan por sus entidades (Importaciones). Limitado a 30 reglas; las plantillas se ejecutan con derechos de administrador.
 
 ## Solución de problemas
 
@@ -204,6 +272,23 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 Cada `.py`, `.js` y `.yaml` empieza con una cabecera SHA256 (contenido desde la línea 2). Comprobar con `tail -n +2 archivo.py | sha256sum`. Las sumas de comprobación de los archivos JSON están en [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Historial de versiones
+
+### 1.1.1b2 (versión preliminar)
+
+- Nuevo: **Entradas** (engranaje): un evento o el servicio `notification_center.inbound` se asigna mediante plantillas a título, texto, clave y nivel, con tabla de valores para el nivel, condición de cierre y vista del último contenido recibido
+- Nuevo: servicio `notification_center.inbound` (campo `rule`, más campos libres)
+- Nuevo: comandos websocket `set_inbound` y `delete_inbound` (administradores)
+- Nuevo: ejemplo `examples/inbound_watchman.yaml`
+- Tras la actualización reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
+
+### 1.1.1b1 (versión preliminar)
+
+- Nuevo: **origen** de cada aviso (logotipo de la integración), ventana con la **tarjeta de la integración** y «Abrir integración»
+- Nuevo: **asignación de niveles** por tipo de aviso en el engranaje (también afecta al push y al orden)
+- Nuevo: **importación** mediante reglas (engranaje → Importaciones, con plantilla de Watchman) y el servicio `notification_center.report`
+- Nuevo: campos opcionales `domain` y `card` en el registro (el esquema 1 sigue siendo compatible)
+- Corregido: los textos largos se cortaban a 200 caracteres al componerlos (ahora 2000)
+- Tras la actualización reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
 
 ### 1.0.0
 

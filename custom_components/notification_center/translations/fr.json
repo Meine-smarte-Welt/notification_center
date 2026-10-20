@@ -119,9 +119,63 @@
           "description": "Normale, élevée ou urgente. « Urgent » contourne le mode silencieux sur les téléphones."
         }
       }
+    },
+    "report": {
+      "name": "Signaler une notification",
+      "description": "Crée ou met à jour un message dans Notification Center. Pour les intégrations sans interface propre (p. ex. comme action du rapport Watchman).",
+      "fields": {
+        "message": {
+          "name": "Message",
+          "description": "Le texte du message."
+        },
+        "title": {
+          "name": "Titre",
+          "description": "Titre facultatif (par défaut : nom de la source)."
+        },
+        "source": {
+          "name": "Source",
+          "description": "Nom de la source, p. ex. Watchman. Sert à l’icône d’origine."
+        },
+        "key": {
+          "name": "Clé",
+          "description": "Même clé = le même message est mis à jour (par défaut : default)."
+        },
+        "state": {
+          "name": "État",
+          "description": "active (par défaut) ou resolved pour fermer le message."
+        },
+        "severity": {
+          "name": "Niveau",
+          "description": "critical, warning, info (par défaut) ou ok. Modifiable dans la carte."
+        },
+        "domain": {
+          "name": "Intégration (domaine)",
+          "description": "Domaine pour le logo, p. ex. watchman (par défaut : nom de la source)."
+        },
+        "icon": {
+          "name": "Icône",
+          "description": "Icône de secours, p. ex. mdi:eye-check."
+        }
+      }
+    },
+    "inbound": {
+      "name": "Entrée (mappage)",
+      "description": "Accepte des données quelconques d’une autre intégration et les associe, via une règle d’entrée (carte → roue dentée → Entrées), au titre, au texte et au niveau.",
+      "fields": {
+        "rule": {
+          "name": "Règle",
+          "description": "ID de la règle d’entrée. Tous les autres champs de l’appel sont disponibles pour la règle comme data."
+        }
+      }
     }
   },
   "exceptions": {
+    "unknown_rule": {
+      "message": "Il n’existe pas de règle d’entrée « {rule} » avec le déclencheur « service ». Crée-la dans la carte sous roue dentée → Entrées."
+    },
+    "not_loaded": {
+      "message": "Notification Center n’est pas chargé."
+    },
     "unknown_recipient": {
       "message": "Le profil de destinataire « {recipient} » n’existe pas. Ajoute des profils sous Paramètres → Appareils et services → Notification Center → Configurer."
     }

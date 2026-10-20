@@ -1,0 +1,10 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): f48baee4eed0348fcfec72e159681f01a5b5525451b6bf340cd380ad76227f13
+# Eigene Meldung aus einer Automation (gleicher key = dieselbe Meldung wird aktualisiert).
+action: notification_center.report
+data:
+  source: Mein Skript
+  title: Backup
+  message: Das Backup ist fehlgeschlagen.
+  severity: critical
+  key: backup
+  # state: resolved   # schließt die Meldung wieder

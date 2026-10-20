@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): ba042c88b05881fa07252abda680140512d61420fdde131e798a653b2d0bf334
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 7ab30e2100192c16e564a218e32ccf521775a060ca3bfcf4cd9bde0fb4519b1a
 """Die Notification-Center-Integration.
 
 Bündelt zusammenfassende Sensoren (Meldungen der Integrationen,
@@ -33,6 +33,8 @@ from .const import (
     CARD_VERSION,
     CONF_RECIPIENTS,
     DOMAIN,
+    SERVICE_INBOUND,
+    SERVICE_REPORT,
     SERVICE_SEND,
     SIGNAL_UPDATED,
     URGENCIES,
@@ -53,6 +55,27 @@ SEND_SCHEMA = vol.Schema(
         vol.Optional("title"): cv.string,
         vol.Optional("urgency", default=URGENCY_NORMAL): vol.In(URGENCIES),
     }
+)
+
+
+REPORT_SCHEMA = vol.Schema(
+    {
+        vol.Required("message"): vol.All(cv.string, vol.Length(min=1)),
+        vol.Optional("title"): cv.string,
+        vol.Optional("source"): cv.string,
+        vol.Optional("key"): cv.string,
+        vol.Optional("state", default="active"): vol.In(["active", "resolved"]),
+        vol.Optional("severity", default="info"): vol.In(["critical", "warning", "info", "ok"]),
+        vol.Optional("domain"): cv.string,
+        vol.Optional("icon"): cv.string,
+    },
+    extra=vol.ALLOW_EXTRA,  # Aufrufer wie Watchman reichen eigene Zusatzfelder mit
+)
+
+
+INBOUND_SCHEMA = vol.Schema(
+    {vol.Required("rule"): cv.string},
+    extra=vol.ALLOW_EXTRA,  # alles andere ordnet die Regel in der Karte zu
 )
 
 
@@ -100,6 +123,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id, None)
         hass.services.async_remove(DOMAIN, SERVICE_SEND)
+        hass.services.async_remove(DOMAIN, SERVICE_REPORT)
+        hass.services.async_remove(DOMAIN, SERVICE_INBOUND)
     return unload_ok
 
 
@@ -150,6 +175,35 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(
         DOMAIN, SERVICE_SEND, _async_handle_send, schema=SEND_SCHEMA
+    )
+
+    async def _async_handle_report(call: ServiceCall) -> None:
+        entries = [e for e in hass.config_entries.async_entries(DOMAIN) if hasattr(e, "runtime_data")]
+        if not entries:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN, translation_key="not_loaded"
+            )
+        entries[0].runtime_data.async_service_report(dict(call.data))
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_REPORT, _async_handle_report, schema=REPORT_SCHEMA
+    )
+
+    async def _async_handle_inbound(call: ServiceCall) -> None:
+        entries = [e for e in hass.config_entries.async_entries(DOMAIN) if hasattr(e, "runtime_data")]
+        if not entries:
+            raise ServiceValidationError(translation_domain=DOMAIN, translation_key="not_loaded")
+        data = dict(call.data)
+        rule_id = data.pop("rule")
+        if not entries[0].runtime_data.async_inbound_service(rule_id, data):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unknown_rule",
+                translation_placeholders={"rule": rule_id},
+            )
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_INBOUND, _async_handle_inbound, schema=INBOUND_SCHEMA
     )
 
 

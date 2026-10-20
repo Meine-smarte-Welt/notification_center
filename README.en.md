@@ -18,6 +18,9 @@ A Home Assistant integration that combines **messages from your integrations**, 
 - Four list sensors plus a profile sensor, Android template widget, quick send, scripts and blueprints
 - Card with tabs, statistic chips, search, sorting, detail popup, banner, two-click confirmation and free colors
 - Everything in **five languages**: German, English, Dutch, French, Spanish
+- **Origin:** every message shows the logo of the originating integration (otherwise the source's icon). Clicking opens the popup with the integration's card (if any) and “Open integration”
+- **Assign levels yourself:** in the cog you decide per message type whether it is critical, warning, info or OK. **Import:** rules and the service `notification_center.report` turn integrations without their own interface into sources, e.g. Watchman
+- **Inbound (mapping):** you decide which field of another integration becomes title, text, key and level. This connects any integration that fires an event or calls an action
 
 ## Requirements
 
@@ -95,6 +98,8 @@ All colors are set per card (editor section *Colors*). Empty = theme default. Al
 
 `notification_center.send` sends a message to a recipient profile. “Urgent” bypasses silent mode on phones (Android: alarm channel, iOS: Critical Alert); for email a prefix is added to the subject.
 
+`notification_center.report` creates or updates a message (same `key` = same message); `state: resolved` closes it. Any automation, script or integration that can call an “action” can report this way.
+
 ```yaml
 action: notification_center.send
 data:
@@ -119,6 +124,7 @@ Integrations talk to the Notification Center over the Home Assistant event bus (
 - `initial: true` (initial state after start/sync) shows up in the card but triggers **no** push.
 - Non-resolvable types (e.g. missed call) stay until you acknowledge them; sync never closes them.
 - Phone numbers, names and texts are never written to the log.
+- The registration may optionally contain `domain` (the integration's domain for the logo) and `card` (Lovelace card configuration for the popup, max. 4 KB). A card you enter in the cog takes precedence.
 
 Example of a message:
 
@@ -134,6 +140,64 @@ event_data:
   subject: { id: haustuer, name: Haustür, kind: device }
   placeholders: { name: Haustür }
 ```
+
+## Import: connect any integration (e.g. Watchman)
+
+Integrations that do not talk to the Notification Center themselves can be connected in three ways. All of them create normal messages with level, history, acknowledge and push.
+
+1. **Import rule (cog → Imports):** turns any entity into a message. Mode *number above 0* (counter) or *state is one of …*. Title and message are optional templates as in Home Assistant (`{{ state }}`, `{{ name }}`, `{{ attrs.xyz }}`). When the condition is false again the message closes itself. A message that already exists at start does not trigger a push.
+2. **Service `notification_center.report`:** for text an integration sends itself. Many integrations can call any action as their target; enter `notification_center.report` there and the text arrives as a message in the Notification Center.
+3. **Events (schema 1):** the clean way for integrations that want to support the Notification Center (see above). The registration may optionally carry `domain` (for the logo) and `card` (Lovelace card for the popup).
+
+**Watchman example:** in the cog under *Imports* → *New rule* → *Watchman template*. It watches `sensor.watchman_missing_entities` (number of missing entities) and creates or closes the message. Add the same rule again for `sensor.watchman_missing_actions`. You get the detailed text report like this:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.report
+  data:
+    source: Watchman
+    title: Watchman
+    severity: warning
+    key: report
+```
+
+According to the Watchman documentation, `watchman.report` accepts any notification action (`action`) with extra data (`data`). Whether Watchman passes `message` and `title` the way `notification_center.report` expects is **not tested against a real Watchman installation**. If it does not work for you, the import rule for the counter remains the safe way. You can split long reports in Watchman with `chunk_size`.
+
+```yaml
+action: notification_center.report
+data:
+  source: My script            # shown as the source; also decides the logo
+  title: Backup
+  message: The backup failed.
+  severity: critical           # critical | warning | info | ok
+  key: backup                  # same key = the same message is updated
+  # state: resolved            # closes the message again
+```
+
+## Inbound: map title, text and level yourself
+
+If you do not know, or are not sure, which fields an integration sends, map them yourself: cog → **Inbound** → *New rule*.
+
+1. **Choose the trigger:** any Home Assistant **event** (enter its name) or a **service call** to `notification_center.inbound` with the field `rule`.
+2. **Look at the last content:** as soon as something arrives, the rule shows the last received content (“Last content”). There you see the real field names.
+3. **Map the fields:** title, text and key are templates on the received fields, e.g. `{{ data.message }}`. Without an entry the rule name or the raw content is shown.
+4. **Map the level:** either fixed, or from a field through a value table, e.g. field `{{ data.level }}` and table `error=critical, warning=warning`. Other values get the fixed level.
+5. **Close:** optionally a condition like `{{ data.count | int == 0 }}`; if true, the message is closed. Same key = the same message is updated.
+
+**Watchman example:** in the rule choose the *Watchman template* (trigger service, text `{{ data.message }}`), save, and call `watchman.report` like this:
+
+```yaml
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.inbound
+  data:
+    rule: watchman        # ID of the inbound rule (shown in the list after saving)
+```
+
+The received content is stored locally in `.storage` (at most 1.5 KB per rule) and never written to the log. Which fields Watchman actually passes you see after the first report under “Last content”. This is **not tested with a real Watchman installation**.
 
 ## Sensors
 
@@ -156,11 +220,11 @@ The large attributes are not stored in the long-term database.
 
 ## Version display and update notice
 
-The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.0.0 · Integration 1.0.0`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours (including pre-releases for beta/RC). New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
+The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.1.1b2 · Integration 1.1.1b2`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours (including pre-releases for beta/RC). New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
 
 ## Settings (cog)
 
-Fixed order of the accordions: **App version** · **Sources** · **Options** (silent mode, delivery) · **Maintenance** (test message, acknowledge all, clear history, each with two-click confirmation) · **Events** (log since start, without contents). Only administrators can change things.
+Fixed order of the accordions: **App version** · **Sources** · **Options** (silent mode, delivery) · **Maintenance** (test message, acknowledge all, clear history, each with two-click confirmation) · **Events** (log since start, without contents). Only administrators can change things. Also **Imports** (create, edit, delete rules) and, per source, the **level choice** per message type and the **popup card** (Lovelace card as JSON).
 
 ## Android widget
 
@@ -180,7 +244,7 @@ Below the list you can click together scripts, script blueprints and automation 
 
 ## Known limitations
 
-- **Not tested on a real Home Assistant instance or with real phones.** Checked: the hub logic against a simulated event bus (14 tests), the card in a headless browser with test data (all tabs, popup, cog, five languages, editor) and syntax/JSON. Behavior in the real Home Assistant UI is **untested**.
+- **Not tested on a real Home Assistant instance or with real phones.** Checked: the hub logic against a simulated event bus (27 tests), the card in a headless browser with test data (all tabs, popup, cog, five languages, editor) and syntax/JSON. Behavior in the real Home Assistant UI is **untested**.
 - **Interplay with the sister integrations is untested:** only simulated events were used, no real Fritz!Box, Zigbee2MQTT or Matter data.
 - Whether “Urgent” really bypasses silent mode on your device depends on Android/iOS settings (channel permissions, Do Not Disturb, critical alerts). Please try it with the test message.
 - Email profiles can technically be chosen for message delivery, but email is not part of the tested scope of 1.0.0.
@@ -188,6 +252,10 @@ Below the list you can click together scripts, script blueprints and automation 
 - Persistent notifications are read defensively from an internal Home Assistant store; if that changes, the category stays empty.
 - The Dutch, French and Spanish translations are machine-made and not checked by native speakers - corrections welcome.
 - Scripts and blueprints are only created; editing and deleting happen in Home Assistant.
+- **New in 1.1.1b1 is only tested with simulated data** (hub against the Home Assistant core, card in a headless browser). The logo comes from Home Assistant's brand proxy (`/api/brands/integration/<domain>/icon.png`); if there is none, the source's icon is shown. Neither was seen on a real instance.
+- The popup card is created through Home Assistant's card helper. Cards that need their own resource must be loaded on your dashboard.
+- Importing the Watchman report as text through `notification_center.report` is not tested with a real Watchman installation. Imports are limited to 30 rules; templates run with administrator rights.
+- **New in 1.1.1b2 tested with simulated data only.** An inbound rule needs an integration that fires an event or calls an action. Integrations that work only internally can only be connected through their entities (Imports). Limited to 30 rules; templates run with administrator rights.
 
 ## Troubleshooting
 
@@ -204,6 +272,23 @@ Below the list you can click together scripts, script blueprints and automation 
 Every `.py`, `.js` and `.yaml` starts with a SHA256 header (content from line 2). Verify with `tail -n +2 file.py | sha256sum`. Checksums of the JSON files are in [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Version history
+
+### 1.1.1b2 (pre-release)
+
+- New: **Inbound** (cog): an event or the service `notification_center.inbound` is mapped through templates to title, text, key and level, with a value table for the level, a close condition and a view of the last received content
+- New: service `notification_center.inbound` (field `rule`, any further fields)
+- New: websocket commands `set_inbound` and `delete_inbound` (admins only)
+- New: example `examples/inbound_watchman.yaml`
+- After the update restart Home Assistant and clear the browser cache (Ctrl+F5)
+
+### 1.1.1b1 (pre-release)
+
+- New: **origin** of every message (integration logo), popup with the **integration's card** and “Open integration”
+- New: **level assignment** per message type in the cog (also applies to push and sorting)
+- New: **import** through rules (cog → Imports, with a Watchman template) and the service `notification_center.report`
+- New: optional fields `domain` and `card` in the registration (schema 1 stays compatible)
+- Fixed: long texts were cut to 200 characters when assembled (now 2000)
+- After the update restart Home Assistant and clear the browser cache (Ctrl+F5)
 
 ### 1.0.0
 

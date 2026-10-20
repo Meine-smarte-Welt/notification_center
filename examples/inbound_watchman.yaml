@@ -1,0 +1,10 @@
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): faecb702f63e2acd40f385ed3ce4d736b69f142af42559043fd1f08b91ab960d
+# Watchman-Bericht über eine Eingangs-Regel (Karte -> Zahnrad -> Eingänge -> Neue Regel -> Watchman-Vorlage).
+# Die Regel ordnet Titel, Text und Stufe selbst zu; den echten Inhalt zeigt "Letzter Inhalt" nach dem ersten Bericht.
+# Mit einer echten Watchman-Installation nicht geprüft.
+action: watchman.report
+data:
+  create_file: false
+  action: notification_center.inbound
+  data:
+    rule: watchman

@@ -1,8 +1,8 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 0163186efa2e038694eb10698f6ababce58c27afa268dbf617ffa3cbefa59958
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 6a0e9838f439ea13c0411211e92032a5e738c2fc855e4de01cca5059ad3ca25d
 """Konstanten für das Notification Center."""
 
 DOMAIN = "notification_center"
-VERSION = "1.0.0"
+VERSION = "1.1.1b2"
 GITHUB_OWNER = "Meine-smarte-Welt"
 GITHUB_REPO = "notification_center"
 GITHUB_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}"
@@ -52,6 +52,19 @@ BUNDLE_WINDOW = 10
 
 # Update-Prüfung
 UPDATE_CHECK_HOURS = 12
+
+# Import: Entity-Regeln und Service ``notification_center.report``
+SERVICE_REPORT = "report"
+IMPORT_PREFIX = "import_"
+SERVICE_PREFIX = "svc_"
+IMPORT_MODES = ["count", "states"]
+MAX_IMPORTS = 30
+# Eingangs-Regeln: beliebiges Ereignis oder Service ``notification_center.inbound`` -> Meldung
+SERVICE_INBOUND = "inbound"
+INBOUND_PREFIX = "inbound_"
+MAX_INBOUND = 30
+SAMPLE_BYTES = 1500
+MAX_CARD_BYTES = 4096
 
 SIGNAL_UPDATED = f"{DOMAIN}_updated"
 

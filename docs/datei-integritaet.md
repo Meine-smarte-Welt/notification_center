@@ -4,7 +4,7 @@ JSON-Dateien haben keine Kommentare, daher stehen ihre SHA256-Prüfsummen (über
 
 | Datei | SHA256 |
 |---|---|
-| `custom_components/notification_center/manifest.json` | `95f5b5541ea6637e66232be31708276d5ffc608be8f123230d8d8afbe25385b9` |
+| `custom_components/notification_center/manifest.json` | `ba0efec693d23004bc9eea5f4c68cf93ab4ba7a98de6a711e55b5b63b97cdfc7` |
 | `custom_components/notification_center/strings.json` | `f82277f2dd1c347620d74460fdf87ccf74cc18a8698ef19981df89dd02c56966` |
 | `custom_components/notification_center/translations/de.json` | `f330d16de9f8a906fea98a38c713c7884274abbe76613dd96a627aca7c57c113` |
 | `custom_components/notification_center/translations/en.json` | `f82277f2dd1c347620d74460fdf87ccf74cc18a8698ef19981df89dd02c56966` |

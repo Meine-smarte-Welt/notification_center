@@ -21,6 +21,8 @@ Una integración de Home Assistant que reúne los **mensajes de tus integracione
 - **Origen:** cada aviso muestra el logotipo de la integración de origen (si no, el icono de la fuente). Un clic abre la ventana con la tarjeta de la integración (si existe) y «Abrir integración»
 - **Asignar tú los niveles:** en el engranaje decides por tipo de aviso si es crítico, advertencia, info o correcto. **Importación:** reglas y el servicio `notification_center.report` convierten integraciones sin interfaz propia en fuentes, p. ej. Watchman
 - **Entradas (asignación):** tú decides qué campo de otra integración es título, texto, clave y nivel. Así se conecta cualquier integración que dispare un evento o llame a una acción
+- **Agrupar:** además de ordenar, las listas se pueden agrupar, p. ej. los avisos por integración, urgencia o tipo de aviso. Los grupos se pueden plegar
+- **Tarjeta emergente en YAML:** pega simplemente el código del editor de tarjetas, sin necesidad de JSON
 
 ## Requisitos
 
@@ -30,7 +32,7 @@ Una integración de Home Assistant que reúne los **mensajes de tus integracione
 
 ## Instalación
 
-**HACS:** añade el repositorio personalizado `https://github.com/Meine-smarte-Welt/notification_center` (categoría *Integración*), instala «Notification Center» y reinicia Home Assistant. Solo verás las versiones preliminares (beta/RC) si activas «Mostrar versiones beta» en HACS.
+**HACS:** añade el repositorio personalizado `https://github.com/Meine-smarte-Welt/notification_center` (categoría *Integración*), instala «Notification Center» y reinicia Home Assistant.
 
 **Manual:** copia la carpeta `custom_components/notification_center` en tu directorio `config` y reinicia.
 
@@ -72,6 +74,7 @@ entities:
 | `default_sort` | Ordenación predeterminada (`default`, `newest`, `oldest`, `title`) |
 | `show_messages … show_settings` | Cada categoría se activa/desactiva por separado (al menos una permanece visible) |
 | `show_search / show_filter_bar / show_stats` | Campo de búsqueda, selección de orden, chips estadísticos/de filtro |
+| `show_group_by` / `default_group_by` | Mostrar la selección de agrupación; agrupación predeterminada (`none`, `integration`, `severity`, `type`, según la lista) |
 | `max_rows` | Número máximo de filas (0 = todas) |
 | `zoom` | Escala de la tarjeta en porcentaje (50-150) |
 | `read_only` | oculta todos los controles que modifican algo |
@@ -220,11 +223,11 @@ Los atributos grandes no se guardan en la base de datos a largo plazo.
 
 ## Indicación de versión y aviso de actualización
 
-La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.1.1b2 · Integración 1.1.1b2`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas (con versiones preliminares para beta/RC). Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
+La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.2.0 · Integración 1.2.0`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas. Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
 
 ## Ajustes (engranaje)
 
-Orden fijo de los acordeones: **Versión de la aplicación** · **Orígenes** · **Opciones** (modo silencioso, entrega) · **Mantenimiento** (mensaje de prueba, confirmar todo, vaciar historial, cada uno con confirmación de dos clics) · **Eventos** (registro desde el inicio, sin contenido). Solo los administradores pueden cambiar cosas. Además, **Importaciones** (crear, editar y borrar reglas) y, por fuente, la **elección del nivel** por tipo de aviso y la **tarjeta emergente** (tarjeta Lovelace en JSON).
+Orden fijo de los acordeones: **Versión de la aplicación** · **Orígenes** · **Opciones** (modo silencioso, entrega) · **Mantenimiento** (mensaje de prueba, confirmar todo, vaciar historial, cada uno con confirmación de dos clics) · **Eventos** (registro desde el inicio, sin contenido). Solo los administradores pueden cambiar cosas. Además, **Importaciones** (crear, editar y borrar reglas) y, por fuente, la **elección del nivel** por tipo de aviso y la **tarjeta emergente** (tarjeta Lovelace en YAML, pega simplemente el código del editor de tarjetas).
 
 ## Widget de Android
 
@@ -252,10 +255,11 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 - Las notificaciones persistentes se leen de forma defensiva de un almacén interno de Home Assistant; si eso cambia, la categoría queda vacía.
 - Las traducciones al neerlandés, francés y español son automáticas y no están revisadas por hablantes nativos - se agradecen correcciones.
 - Los scripts y blueprints solo se crean; editar y borrar se hace en Home Assistant.
-- **Lo nuevo de 1.1.1b1 solo está probado con datos simulados** (hub contra el núcleo de Home Assistant, tarjeta en un navegador headless). El logotipo viene del proxy de marcas de Home Assistant (`/api/brands/integration/<domain>/icon.png`); si no hay, se muestra el icono de la fuente. Ninguno de los dos se ha visto en una instancia real.
+- **El logotipo de origen, las importaciones y la tarjeta emergente solo están probados con datos simulados** (hub contra el núcleo de Home Assistant, tarjeta en un navegador headless). El logotipo viene del proxy de marcas de Home Assistant (`/api/brands/integration/<domain>/icon.png`); si no hay, se muestra el icono de la fuente. Ninguno de los dos se ha visto en una instancia real.
 - La tarjeta emergente se crea con el asistente de tarjetas de Home Assistant. Las tarjetas que necesiten su propio recurso deben estar cargadas en tu panel.
 - La importación del informe de Watchman como texto con `notification_center.report` no está probada con una instalación real de Watchman. Las importaciones se limitan a 30 reglas; las plantillas se ejecutan con derechos de administrador.
-- **Lo nuevo de 1.1.1b2 solo está probado con datos simulados.** Una regla de entrada necesita una integración que dispare un evento o llame a una acción. Las integraciones que solo trabajan internamente solo se conectan por sus entidades (Importaciones). Limitado a 30 reglas; las plantillas se ejecutan con derechos de administrador.
+- **Reglas de entrada solo probadas con datos simulados.** Una regla de entrada necesita una integración que dispare un evento o llame a una acción. Las integraciones que solo trabajan internamente solo se conectan por sus entidades (Importaciones). Limitado a 30 reglas; las plantillas se ejecutan con derechos de administrador.
+- **La agrupación, la entrada YAML de la tarjeta emergente y la corrección del desplazamiento (nuevo en 1.2.0) solo están probados con datos simulados.** Que las barras de desplazamiento se queden realmente quietas en tu navegador y panel está sin comprobar. La tarjeta emergente necesita un campo `type` y no puede superar los 4 KB; los anclajes YAML (`&`, `*`) no se aceptan. Las pruebas del hub contra el núcleo de Home Assistant no se repitieron para 1.2.0; el backend solo está comprobado en sintaxis y el analizador YAML se probó por separado.
 
 ## Solución de problemas
 
@@ -273,22 +277,18 @@ Cada `.py`, `.js` y `.yaml` empieza con una cabecera SHA256 (contenido desde la 
 
 ## Historial de versiones
 
-### 1.1.1b2 (versión preliminar)
+### 1.2.0
 
-- Nuevo: **Entradas** (engranaje): un evento o el servicio `notification_center.inbound` se asigna mediante plantillas a título, texto, clave y nivel, con tabla de valores para el nivel, condición de cierre y vista del último contenido recibido
-- Nuevo: servicio `notification_center.inbound` (campo `rule`, más campos libres)
-- Nuevo: comandos websocket `set_inbound` y `delete_inbound` (administradores)
-- Nuevo: ejemplo `examples/inbound_watchman.yaml`
-- Tras la actualización reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
-
-### 1.1.1b1 (versión preliminar)
-
+- Nuevo: **agrupar** además de ordenar: avisos por integración, urgencia o tipo de aviso, actualizaciones por integración, reparaciones por integración o urgencia; los grupos se pueden plegar. Claves de la tarjeta `show_group_by` y `default_group_by`
+- Nuevo: **tarjeta emergente en YAML:** pega simplemente el código del editor de tarjetas (el JSON sigue funcionando). El campo muestra también la tarjeta guardada en YAML
+- Corregido: las **barras de desplazamiento** de la barra de categorías y de la ventana, y la posición de desplazamiento de la página, ya no saltan atrás. La tarjeta solo se redibuja cuando cambian sus propios sensores
 - Nuevo: **origen** de cada aviso (logotipo de la integración), ventana con la **tarjeta de la integración** y «Abrir integración»
-- Nuevo: **asignación de niveles** por tipo de aviso en el engranaje (también afecta al push y al orden)
+- Nuevo: **asignación de nivel** por tipo de aviso en el engranaje (también para push y orden)
 - Nuevo: **importación** mediante reglas (engranaje → Importaciones, con plantilla de Watchman) y el servicio `notification_center.report`
-- Nuevo: campos opcionales `domain` y `card` en el registro (el esquema 1 sigue siendo compatible)
+- Nuevo: **entradas** (engranaje): un evento o el servicio `notification_center.inbound` se asigna mediante plantillas a título, texto, clave y nivel, con tabla de valores para el nivel, condición de cierre y vista del último contenido recibido
+- Nuevo: campos opcionales `domain` y `card` en el registro (el esquema 1 sigue siendo compatible); ejemplo `examples/inbound_watchman.yaml`
 - Corregido: los textos largos se cortaban a 200 caracteres al componerlos (ahora 2000)
-- Tras la actualización reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
+- Tras la actualización, reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
 
 ### 1.0.0
 

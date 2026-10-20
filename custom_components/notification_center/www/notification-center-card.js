@@ -1,4 +1,4 @@
-// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 4df153ab9af182ee941ee6bef10b2ac5eb9881b678e66220dd2711734cb09c5d
+// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 0d4eebf4471bd0c2ce2a7140ec2d2c28bc33e5d43f8b0741a5905dd03d114171
 /**
  * notification-center-card
  *
@@ -21,7 +21,7 @@
  * Der Profil-Sensor (entities.recipients) liefert die Empfänger-Profile.
  */
 
-const CARD_VERSION = "1.1.1b2";
+const CARD_VERSION = "1.2.0";
 const DEFAULT_TITLE = "Notification Center";
 const DEFAULT_ICON = "mdi:bell-badge-outline";
 const DEFAULT_MESSAGES_ENTITY = "sensor.notification_center_meldungen";
@@ -64,6 +64,12 @@ const I18N = {
     "sort_newest": "Neueste zuerst",
     "sort_oldest": "Älteste zuerst",
     "sort_title": "Name A–Z",
+    "group_none": "Keine Gruppierung",
+    "group_integration": "Nach Integration",
+    "group_severity": "Nach Dringlichkeit",
+    "group_type": "Nach Meldungsart",
+    "group_other": "Sonstige",
+    "group_by": "Gruppieren",
     "banner_offline": "Meldungen nicht verfügbar – der Sensor „Meldungen“ ist nicht erreichbar.",
     "banner_silent": "Lautlos-Modus aktiv – es gehen keine Push-Nachrichten raus.",
     "banner_update": "Neue Version {v} verfügbar.",
@@ -185,10 +191,11 @@ const I18N = {
     "sev_default": "Vorgabe",
     "sev_map_title": "Stufe für diese Meldungsart festlegen",
     "card_title": "Popup-Karte",
-    "card_hint": "Lovelace-Karte als JSON, die im Popup einer Meldung dieser Quelle erscheint, z. B. {\"type\":\"markdown\",\"content\":\"Hallo\"}. Leer lassen und speichern entfernt sie.",
+    "card_hint": "Lovelace-Karte als YAML, die im Popup einer Meldung dieser Quelle erscheint. Füge einfach den Code aus dem Karteneditor ein, z. B. type: markdown und content: Hallo. Leer lassen und speichern entfernt sie.",
     "card_save": "Karte speichern",
     "card_remove": "Eigene Karte entfernen",
-    "card_invalid": "Kein gültiges JSON.",
+    "card_invalid": "Kein gültiges YAML.",
+    "card_needs_type": "Die Karte braucht ein Feld „type“ und darf höchstens 4 KB groß sein.",
     "set_imports": "Importe",
     "imp_hint": "Regeln machen aus beliebigen Entitäten Meldungen, z. B. den Zähler von Watchman.",
     "imp_none": "Noch keine Import-Regeln.",
@@ -271,6 +278,12 @@ const I18N = {
     "sort_newest": "Newest first",
     "sort_oldest": "Oldest first",
     "sort_title": "Name A–Z",
+    "group_none": "No grouping",
+    "group_integration": "By integration",
+    "group_severity": "By urgency",
+    "group_type": "By message type",
+    "group_other": "Other",
+    "group_by": "Group by",
     "banner_offline": "Messages unavailable – the “Messages” sensor is not reachable.",
     "banner_silent": "Silent mode is on – no push messages are sent.",
     "banner_update": "New version {v} available.",
@@ -392,10 +405,11 @@ const I18N = {
     "sev_default": "Default",
     "sev_map_title": "Set the level for this message type",
     "card_title": "Popup card",
-    "card_hint": "Lovelace card as JSON shown in the popup of a message from this source, e.g. {\"type\":\"markdown\",\"content\":\"Hello\"}. Save empty to remove it.",
+    "card_hint": "Lovelace card as YAML shown in the popup of a message from this source. Just paste the code from the card editor, e.g. type: markdown and content: Hello. Save empty to remove it.",
     "card_save": "Save card",
     "card_remove": "Remove own card",
-    "card_invalid": "Not valid JSON.",
+    "card_invalid": "Not valid YAML.",
+    "card_needs_type": "The card needs a “type” field and may be at most 4 KB.",
     "set_imports": "Imports",
     "imp_hint": "Rules turn any entity into a message, e.g. the Watchman counter.",
     "imp_none": "No import rules yet.",
@@ -478,6 +492,12 @@ const I18N = {
     "sort_newest": "Nieuwste eerst",
     "sort_oldest": "Oudste eerst",
     "sort_title": "Naam A–Z",
+    "group_none": "Geen groepering",
+    "group_integration": "Per integratie",
+    "group_severity": "Per urgentie",
+    "group_type": "Per meldingstype",
+    "group_other": "Overig",
+    "group_by": "Groeperen",
     "banner_offline": "Meldingen niet beschikbaar – de sensor „Meldingen” is niet bereikbaar.",
     "banner_silent": "Stille modus actief – er worden geen pushberichten verstuurd.",
     "banner_update": "Nieuwe versie {v} beschikbaar.",
@@ -599,10 +619,11 @@ const I18N = {
     "sev_default": "Standaard",
     "sev_map_title": "Niveau voor dit meldingstype instellen",
     "card_title": "Popupkaart",
-    "card_hint": "Lovelace-kaart als JSON die in de popup van een melding van deze bron verschijnt, bijv. {\"type\":\"markdown\",\"content\":\"Hallo\"}. Leeg opslaan verwijdert haar.",
+    "card_hint": "Lovelace-kaart als YAML die in de popup van een melding van deze bron verschijnt. Plak gewoon de code uit de kaarteditor, bijv. type: markdown en content: Hallo. Leeg opslaan verwijdert haar.",
     "card_save": "Kaart opslaan",
     "card_remove": "Eigen kaart verwijderen",
-    "card_invalid": "Geen geldige JSON.",
+    "card_invalid": "Geen geldige YAML.",
+    "card_needs_type": "De kaart heeft een veld “type” nodig en mag hooguit 4 KB groot zijn.",
     "set_imports": "Imports",
     "imp_hint": "Regels maken van elke entiteit een melding, bijv. de teller van Watchman.",
     "imp_none": "Nog geen importregels.",
@@ -685,6 +706,12 @@ const I18N = {
     "sort_newest": "Plus récent d’abord",
     "sort_oldest": "Plus ancien d’abord",
     "sort_title": "Nom A–Z",
+    "group_none": "Aucun groupement",
+    "group_integration": "Par intégration",
+    "group_severity": "Par urgence",
+    "group_type": "Par type de message",
+    "group_other": "Autres",
+    "group_by": "Grouper",
     "banner_offline": "Messages indisponibles – le capteur « Messages » est inaccessible.",
     "banner_silent": "Mode silencieux actif – aucune notification push n’est envoyée.",
     "banner_update": "Nouvelle version {v} disponible.",
@@ -806,10 +833,11 @@ const I18N = {
     "sev_default": "Par défaut",
     "sev_map_title": "Définir le niveau de ce type de message",
     "card_title": "Carte popup",
-    "card_hint": "Carte Lovelace en JSON affichée dans la popup d’un message de cette source, p. ex. {\"type\":\"markdown\",\"content\":\"Bonjour\"}. Enregistrer vide la supprime.",
+    "card_hint": "Carte Lovelace en YAML affichée dans la popup d’un message de cette source. Colle simplement le code de l’éditeur de carte, p. ex. type: markdown et content: Bonjour. Enregistrer vide la supprime.",
     "card_save": "Enregistrer la carte",
     "card_remove": "Supprimer ma carte",
-    "card_invalid": "JSON invalide.",
+    "card_invalid": "YAML invalide.",
+    "card_needs_type": "La carte a besoin d’un champ « type » et ne doit pas dépasser 4 Ko.",
     "set_imports": "Imports",
     "imp_hint": "Les règles transforment n’importe quelle entité en message, p. ex. le compteur de Watchman.",
     "imp_none": "Aucune règle d’import.",
@@ -892,6 +920,12 @@ const I18N = {
     "sort_newest": "Más recientes primero",
     "sort_oldest": "Más antiguos primero",
     "sort_title": "Nombre A–Z",
+    "group_none": "Sin agrupar",
+    "group_integration": "Por integración",
+    "group_severity": "Por urgencia",
+    "group_type": "Por tipo de aviso",
+    "group_other": "Otros",
+    "group_by": "Agrupar",
     "banner_offline": "Mensajes no disponibles: el sensor «Mensajes» no responde.",
     "banner_silent": "Modo silencioso activo: no se envían notificaciones push.",
     "banner_update": "Nueva versión {v} disponible.",
@@ -1013,10 +1047,11 @@ const I18N = {
     "sev_default": "Predeterminado",
     "sev_map_title": "Definir el nivel de este tipo de aviso",
     "card_title": "Tarjeta emergente",
-    "card_hint": "Tarjeta Lovelace en JSON que aparece en la ventana de un aviso de esta fuente, p. ej. {\"type\":\"markdown\",\"content\":\"Hola\"}. Guardar vacío la elimina.",
+    "card_hint": "Tarjeta Lovelace en YAML que aparece en la ventana de un aviso de esta fuente. Pega simplemente el código del editor de tarjetas, p. ej. type: markdown y content: Hola. Guardar vacío la elimina.",
     "card_save": "Guardar tarjeta",
     "card_remove": "Quitar mi tarjeta",
-    "card_invalid": "JSON no válido.",
+    "card_invalid": "YAML no válido.",
+    "card_needs_type": "La tarjeta necesita un campo «type» y no puede superar los 4 KB.",
     "set_imports": "Importaciones",
     "imp_hint": "Las reglas convierten cualquier entidad en un aviso, p. ej. el contador de Watchman.",
     "imp_none": "Aún no hay reglas de importación.",
@@ -1118,6 +1153,20 @@ const BUILDER_SECTIONS = [
 function newBuilderForm() {
   return { name: "", description: "", recipient: "", title: "", message: "", urgency: "normal", message_at_call: false, busy: false, status: null };
 }
+
+// Gruppierung: je Liste sind nur sinnvolle Gruppen möglich (Benachrichtigungen haben keine).
+const GROUP_SUPPORT = {
+  messages: ["integration", "severity", "type"],
+  notifications: [],
+  updates: ["integration"],
+  repairs: ["integration", "severity"],
+};
+const GROUP_LABEL_KEYS = {
+  none: "group_none",
+  integration: "group_integration",
+  severity: "group_severity",
+  type: "group_type",
+};
 
 const SORT_DEFS = [
   { id: "default", labelKey: "sort_default" },
@@ -1265,6 +1314,9 @@ class NotificationCenterCard extends HTMLElement {
     this._popCard = null;
     this._popCardKey = null;
     this._cardDraft = {};
+    this._group = {};
+    this._groupCollapsed = new Set();
+    this._ensureTabVisible = true;
     this._imp = { editing: null, form: null };
     this._inb = { editing: null, form: null };
     this._send = { recipient: "", title: "", message: "", urgency: "normal", busy: false, status: null };
@@ -1274,6 +1326,11 @@ class NotificationCenterCard extends HTMLElement {
       section: null,
       forms: { script: newBuilderForm(), bp_script: newBuilderForm(), bp_automation: newBuilderForm() },
     };
+  }
+
+  connectedCallback() {
+    // Die Karte ist ein Block, damit die gemerkte Mindesthöhe beim Neuzeichnen greift.
+    this.style.display = "block";
   }
 
   disconnectedCallback() {
@@ -1291,15 +1348,35 @@ class NotificationCenterCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const previous = this._hass;
     this._hass = hass;
+    const changed = this._hassChanged(previous, hass);
+    // Das Popup-Kärtchen der Integration bekommt immer das aktuelle hass.
+    if (this._popCard && ("hass" in this._popCard || this._popCard.setConfig)) this._popCard.hass = hass;
     // Tippt der Nutzer gerade im Suchfeld, darf das Feld NICHT neu aufgebaut werden.
     if (this._isSearchFocused()) {
-      this._updateList();
+      if (changed) this._updateList();
       return;
     }
     // Gleiches gilt fürs Senden-Formular und die Builder-Formulare.
     if (this._isFormFieldFocused()) return;
+    // Nur neu zeichnen, wenn sich etwas Sichtbares geändert hat. Home Assistant meldet hass bei
+    // jeder Zustandsänderung im ganzen System; ein Neuzeichnen setzte sonst die Scrollbalken zurück.
+    if (!changed) return;
     this._render();
+  }
+
+  _watchedEntityIds() {
+    const ids = new Set(Object.values((this._config && this._config.entities) || {}).filter(Boolean));
+    if (this._config) ids.add(this._messagesEntityId());
+    return [...ids];
+  }
+
+  _hassChanged(previous, next) {
+    if (!previous || !next || !this._config) return true;
+    if (previous.language !== next.language) return true;
+    if (!!(previous.user && previous.user.is_admin) !== !!(next.user && next.user.is_admin)) return true;
+    return this._watchedEntityIds().some((id) => previous.states[id] !== next.states[id]);
   }
 
   _t(key, vars) {
@@ -1530,10 +1607,55 @@ class NotificationCenterCard extends HTMLElement {
     return !!app.update_available || (!!app.version && app.version !== CARD_VERSION);
   }
 
+  // Scrollpositionen (Kategorie-Leiste, Popup, Textfelder, Listen) überstehen jedes Neuzeichnen.
+  _scrollKeyOf(el, seen) {
+    const marker = el.getAttribute("data-role") || el.getAttribute("data-k") || el.getAttribute("data-tab") || el.getAttribute("data-source") || "";
+    const base = `${el.tagName}.${el.getAttribute("class") || ""}|${marker}`;
+    seen[base] = (seen[base] || 0) + 1;
+    return `${base}#${seen[base]}`;
+  }
+
+  _captureScroll() {
+    const root = this.shadowRoot;
+    const saved = new Map();
+    const seen = {};
+    root.querySelectorAll("*").forEach((el) => {
+      const key = this._scrollKeyOf(el, seen);
+      if (el.scrollTop > 0 || el.scrollLeft > 0) saved.set(key, { top: el.scrollTop, left: el.scrollLeft });
+    });
+    return saved;
+  }
+
+  _restoreScroll(saved) {
+    if (!saved || !saved.size) return;
+    const seen = {};
+    this.shadowRoot.querySelectorAll("*").forEach((el) => {
+      const pos = saved.get(this._scrollKeyOf(el, seen));
+      if (!pos) return;
+      if (pos.top) el.scrollTop = pos.top;
+      if (pos.left) el.scrollLeft = pos.left;
+    });
+  }
+
+  // Nach einem Tab-Wechsel den aktiven Tab in die Leiste holen (nur dann, sonst bleibt die Position).
+  _revealActiveTab() {
+    const tabs = this.shadowRoot.querySelector(".tabs");
+    const active = tabs && tabs.querySelector(".tab.active");
+    if (!active) return;
+    const a = active.getBoundingClientRect();
+    const b = tabs.getBoundingClientRect();
+    if (a.left < b.left) tabs.scrollLeft += a.left - b.left - 8;
+    else if (a.right > b.right) tabs.scrollLeft += a.right - b.right + 8;
+  }
+
   _render() {
     if (!this._config || !this._hass || !this.shadowRoot) return;
 
     const savedFocus = this._captureFocus();
+    const savedScroll = this._captureScroll();
+    // Höhe festhalten, damit die Seite beim kurzen Leeren nicht nach oben springt.
+    const keptHeight = this.offsetHeight;
+    if (keptHeight) this.style.minHeight = `${keptHeight}px`;
     const t = (key, vars) => this._t(key, vars);
 
     const visibleCategories = this._visibleCategories();
@@ -1588,6 +1710,9 @@ class NotificationCenterCard extends HTMLElement {
 
     const showSearch = isList && this._config.show_search !== false;
     const showSort = isList && this._config.show_filter_bar !== false;
+    const groupOptions = GROUP_SUPPORT[key] || [];
+    const showGroup = isList && this._config.show_group_by !== false && groupOptions.length > 0;
+    const groupMode = this._groupBy(key);
     const allItems = isList ? this._itemsFor(key) : [];
     const showDismissAll = !this._ro() && key === "notifications" && allItems.length > 0;
     const showAckAll = !this._ro() && key === "messages" && !inHistory && allItems.length > 0;
@@ -1596,7 +1721,7 @@ class NotificationCenterCard extends HTMLElement {
       `<button class="dismiss-all ${this._confirmId === id ? "armed" : ""}" data-confirm="${id}"><ha-icon icon="${icon}"></ha-icon><span>${escapeHtml(this._confirmId === id ? t("confirm") : label)}</span></button>`;
 
     const toolbarHtml =
-      showSearch || showSort || showDismissAll || showAckAll
+      showSearch || showSort || showGroup || showDismissAll || showAckAll
         ? `<div class="toolbar-row">
              ${
                showSearch
@@ -1610,6 +1735,13 @@ class NotificationCenterCard extends HTMLElement {
                showSort
                  ? `<select class="sort" data-sort aria-label="${escapeHtml(t("sort_default"))}">${SORT_DEFS.map(
                      (s) => `<option value="${s.id}" ${s.id === this._sort ? "selected" : ""}>${escapeHtml(t(s.labelKey))}</option>`
+                   ).join("")}</select>`
+                 : ""
+             }
+             ${
+               showGroup
+                 ? `<select class="sort" data-group-by aria-label="${escapeHtml(t("group_by"))}" title="${escapeHtml(t("group_by"))}">${["none", ...groupOptions].map(
+                     (g) => `<option value="${g}" ${g === groupMode ? "selected" : ""}>${escapeHtml(t(GROUP_LABEL_KEYS[g]))}</option>`
                    ).join("")}</select>`
                  : ""
              }
@@ -1652,7 +1784,13 @@ class NotificationCenterCard extends HTMLElement {
     `;
 
     this._attachListeners();
+    this._restoreScroll(savedScroll);
+    if (this._ensureTabVisible) {
+      this._ensureTabVisible = false;
+      this._revealActiveTab();
+    }
     this._restoreFocus(savedFocus);
+    if (keptHeight) requestAnimationFrame(() => { this.style.minHeight = ""; });
   }
 
   _sortItems(items) {
@@ -1687,13 +1825,90 @@ class NotificationCenterCard extends HTMLElement {
 
   _listHtml(activeDef) {
     const items = this._visibleItems();
-    if (items.length) return items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("");
+    if (items.length) {
+      const mode = this._groupBy(this._activeTab);
+      if (mode === "none") return items.map((item) => this._renderRow(this._activeTab, activeDef, item)).join("");
+      return this._groupedHtml(this._activeTab, activeDef, mode, items);
+    }
     const inHistory = this._activeTab === "messages" && this._activeFilter.messages === "history";
     const text = this._activeTab === "messages" ? this._t(inHistory ? "msg_no_history" : "msg_none") : this._t("none_open");
     return `<div class="empty">
            <ha-icon icon="mdi:check-circle-outline"></ha-icon>
            <span>${escapeHtml(text)}</span>
          </div>`;
+  }
+
+  // --- Gruppierung ---------------------------------------------------------
+
+  _groupBy(key) {
+    const options = GROUP_SUPPORT[key] || [];
+    if (!options.length) return "none";
+    const chosen = this._group[key] !== undefined ? this._group[key] : this._config.default_group_by || "none";
+    return options.includes(chosen) ? chosen : "none";
+  }
+
+  _niceDomain(domain) {
+    const text = String(domain || "").replace(/_/g, " ").trim();
+    return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
+  }
+
+  _severityOf(item) {
+    const value = item.severity === "error" ? "critical" : item.severity;
+    return SEVERITY_ORDER.includes(value) ? value : "info";
+  }
+
+  // Liefert {id, label, lead} der Gruppe, zu der ein Eintrag gehört.
+  _groupOf(key, mode, item) {
+    const other = this._t("group_other");
+    if (mode === "severity") {
+      const sev = this._severityOf(item);
+      return { id: sev, label: this._sevLabel(sev), lead: `<span class="chip-dot" style="background:${this._sevColor(sev)}"></span>` };
+    }
+    if (mode === "type") {
+      const src = this._sourceOf(item.source);
+      const info = src && (src.types || []).find((ty) => ty.type === item.type);
+      return { id: item.type || "", label: (info && info.label) || item.type || other, lead: "" };
+    }
+    // integration
+    if (key === "messages") {
+      return { id: item.source || "", label: item.source_name || item.source || other, lead: this._srcLogo(item.source_domain, item.source_icon) };
+    }
+    let domain = item.domain || "";
+    if (!domain && item.entity_id) domain = String(item.entity_id).split(".")[0];
+    return { id: domain, label: this._niceDomain(domain) || other, lead: domain ? this._srcLogo(domain, null) : "" };
+  }
+
+  _groupedHtml(key, def, mode, items) {
+    const groups = new Map();
+    items.forEach((item) => {
+      const info = this._groupOf(key, mode, item);
+      if (!groups.has(info.id)) groups.set(info.id, { ...info, items: [], rank: 9 });
+      const group = groups.get(info.id);
+      group.items.push(item);
+      group.rank = Math.min(group.rank, SEVERITY_ORDER.indexOf(this._severityOf(item)));
+    });
+    const lang = langOf(this._hass);
+    const ordered = [...groups.values()].sort((a, b) => {
+      if (mode === "severity") return a.rank - b.rank;
+      if (key !== "updates" && a.rank !== b.rank) return a.rank - b.rank;
+      return String(a.label).localeCompare(String(b.label), lang);
+    });
+    return ordered
+      .map((group) => {
+        const gkey = `${key}|${mode}|${group.id}`;
+        const collapsed = this._groupCollapsed.has(gkey);
+        return `
+      <div class="group">
+        <div class="group-head" role="button" tabindex="0" aria-expanded="${collapsed ? "false" : "true"}" data-group-toggle="${escapeHtml(gkey)}">
+          <ha-icon class="group-chev" icon="${collapsed ? "mdi:chevron-right" : "mdi:chevron-down"}"></ha-icon>
+          ${group.lead}
+          <span class="grow">${escapeHtml(group.label)}</span>
+          <span class="badge">${group.items.length}</span>
+        </div>
+        ${collapsed ? "" : group.items.map((item) => this._renderRow(key, def, item)).join("")}
+      </div>`;
+      })
+      .join("");
   }
 
   // Erneuert NUR die Liste (Suche/hass-Update während des Tippens).
@@ -1864,6 +2079,7 @@ class NotificationCenterCard extends HTMLElement {
         this._activeTab = el.getAttribute("data-tab");
         this._search = "";
         this._detailItem = null;
+        this._ensureTabVisible = true;
         this._render();
       });
     });
@@ -1874,6 +2090,14 @@ class NotificationCenterCard extends HTMLElement {
         this._render();
       });
     });
+
+    const groupSelect = root.querySelector("[data-group-by]");
+    if (groupSelect) {
+      groupSelect.addEventListener("change", (ev) => {
+        this._group[this._activeTab] = ev.target.value;
+        this._render();
+      });
+    }
 
     const sortSelect = root.querySelector("[data-sort]");
     if (sortSelect) {
@@ -1916,6 +2140,21 @@ class NotificationCenterCard extends HTMLElement {
 
   _attachRowListeners() {
     const root = this.shadowRoot;
+    root.querySelectorAll("[data-group-toggle]").forEach((el) => {
+      const toggle = () => {
+        const gkey = el.getAttribute("data-group-toggle");
+        if (this._groupCollapsed.has(gkey)) this._groupCollapsed.delete(gkey);
+        else this._groupCollapsed.add(gkey);
+        this._render();
+      };
+      el.addEventListener("click", toggle);
+      el.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          toggle();
+        }
+      });
+    });
     root.querySelectorAll(".row").forEach((rowEl) => {
       const category = rowEl.getAttribute("data-category");
       const itemId = rowEl.getAttribute("data-item-id");
@@ -2088,10 +2327,10 @@ class NotificationCenterCard extends HTMLElement {
           })
           .join("");
         const draft = this._cardDraft[src.source];
-        const cardText = draft !== undefined ? draft : src.card ? JSON.stringify(src.card, null, 2) : "";
+        const cardText = draft !== undefined ? draft : src.card_yaml || "";
         const cardBody = `
           <div class="send-hint">${escapeHtml(t("card_hint"))}</div>
-          <textarea class="send-input mono" rows="5" data-role="card-json" data-source="${escapeHtml(src.source)}" ${editable ? "" : "disabled"}>${escapeHtml(cardText)}</textarea>
+          <textarea class="send-input mono" rows="5" data-role="card-yaml" data-source="${escapeHtml(src.source)}" spellcheck="false" placeholder="type: markdown&#10;content: Hallo" ${editable ? "" : "disabled"}>${escapeHtml(cardText)}</textarea>
           ${editable ? `<div class="send-actions wrap">
             <button class="popup-primary" data-card-save="${escapeHtml(src.source)}">${escapeHtml(t("card_save"))}</button>
             ${src.card_custom ? `<button class="popup-secondary" data-card-remove="${escapeHtml(src.source)}">${escapeHtml(t("card_remove"))}</button>` : ""}
@@ -2281,7 +2520,7 @@ class NotificationCenterCard extends HTMLElement {
         this._ws("set_severity", { source: el.getAttribute("data-source"), msg_type: el.getAttribute("data-msg-type"), severity: el.value }, this._t("saved"));
       });
     });
-    root.querySelectorAll('[data-role="card-json"]').forEach((el) => {
+    root.querySelectorAll('[data-role="card-yaml"]').forEach((el) => {
       stopKeyPropagation(el);
       el.addEventListener("input", () => {
         this._cardDraft[el.getAttribute("data-source")] = el.value;
@@ -2290,19 +2529,25 @@ class NotificationCenterCard extends HTMLElement {
     root.querySelectorAll("[data-card-save]").forEach((el) => {
       el.addEventListener("click", async () => {
         const source = el.getAttribute("data-card-save");
-        const area = root.querySelector(`[data-role="card-json"][data-source="${source}"]`);
-        const text = area ? area.value.trim() : "";
-        let card = null;
-        if (text) {
-          try {
-            card = JSON.parse(text);
-          } catch (err) {
-            this._showToast(this._t("card_invalid"), "error");
-            return;
+        const area = root.querySelector(`[data-role="card-yaml"][data-source="${source}"]`);
+        const text = area ? area.value : "";
+        if (!this._hass) return;
+        try {
+          // Der Text geht unverändert ans Backend, das ihn als YAML (und damit auch JSON) liest.
+          await this._hass.callWS({ type: "notification_center/set_card", source, ...(text.trim() ? { yaml: text } : { card: null }) });
+          delete this._cardDraft[source];
+          this._showToast(this._t("saved"), "ok");
+        } catch (err) {
+          const code = err && err.code;
+          if (code === "invalid_yaml") {
+            const where = err.message ? ` (${err.message})` : "";
+            this._showToast(`${this._t("card_invalid")}${where}`, "error");
+          } else if (code === "invalid_card") {
+            this._showToast(this._t("card_needs_type"), "error");
+          } else {
+            this._showToast(this._t("error_prefix", { reason: errorText(err, this._t("err_unknown")) }), "error");
           }
         }
-        const result = await this._ws("set_card", { source, card }, this._t("saved"));
-        if (result) delete this._cardDraft[source];
       });
     });
     root.querySelectorAll("[data-card-remove]").forEach((el) => {
@@ -3121,8 +3366,25 @@ class NotificationCenterCard extends HTMLElement {
         min-width: 16px;
         text-align: center;
       }
+      .group-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 6px 16px 0;
+        padding: 6px 4px;
+        border-bottom: 1px solid var(--divider-color, #e0e0e0);
+        font-weight: 500;
+        font-size: 0.9rem;
+        color: var(--secondary-text-color);
+        cursor: pointer;
+        user-select: none;
+      }
+      .group-head:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 1px; border-radius: 6px; }
+      .group-head ha-icon { --mdc-icon-size: 20px; }
+      .group-head .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
       .toolbar-row {
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 8px;
         margin: 4px 16px;
@@ -3132,6 +3394,7 @@ class NotificationCenterCard extends HTMLElement {
         align-items: center;
         gap: 8px;
         flex: 1;
+        min-width: 140px;
         padding: 6px 10px;
         border-radius: 8px;
         background: var(--secondary-background-color, rgba(0,0,0,0.04));
@@ -3644,6 +3907,10 @@ class NotificationCenterCardEditor extends HTMLElement {
         { name: "show_search", selector: { boolean: {} } },
         { name: "show_filter_bar", selector: { boolean: {} } },
         { name: "show_stats", selector: { boolean: {} } },
+        { name: "show_group_by", selector: { boolean: {} } },
+        { name: "default_group_by", selector: { select: { mode: "dropdown", options: [
+          { value: "none", label: "Keine Gruppierung" }, { value: "integration", label: "Nach Integration" },
+          { value: "severity", label: "Nach Dringlichkeit" }, { value: "type", label: "Nach Meldungsart" } ] } } },
         { name: "default_sort", selector: { select: { mode: "dropdown", options: [
           { value: "default", label: "Standard" }, { value: "newest", label: "Neueste zuerst" },
           { value: "oldest", label: "Älteste zuerst" }, { value: "title", label: "Name A–Z" } ] } } },
@@ -4025,6 +4292,8 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_search: "Suchfeld anzeigen",
       show_filter_bar: "Sortierauswahl anzeigen",
       show_stats: "Statistik-/Filter-Chips anzeigen",
+      show_group_by: "Gruppierungsauswahl anzeigen",
+      default_group_by: "Standard-Gruppierung (je nach Liste verfügbar)",
       default_sort: "Standard-Sortierung",
       max_rows: "Höchstens Zeilen (0 = alle)",
       zoom: "Zoom der Karte",
@@ -4055,6 +4324,8 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_search: config.show_search !== false,
       show_filter_bar: config.show_filter_bar !== false,
       show_stats: config.show_stats !== false,
+      show_group_by: config.show_group_by !== false,
+      default_group_by: config.default_group_by || "none",
       default_sort: config.default_sort || "default",
       max_rows: Number(config.max_rows) || 0,
       zoom: Number(config.zoom) || 100,
@@ -4080,6 +4351,8 @@ class NotificationCenterCardEditor extends HTMLElement {
       show_search: flat.show_search,
       show_filter_bar: flat.show_filter_bar,
       show_stats: flat.show_stats,
+      show_group_by: flat.show_group_by,
+      default_group_by: flat.default_group_by,
       default_sort: flat.default_sort,
       max_rows: flat.max_rows,
       zoom: flat.zoom,

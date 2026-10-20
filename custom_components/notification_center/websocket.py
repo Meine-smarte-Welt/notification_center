@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 62f63c4e93c2ec5336af5485fe5cb64d69db867c8468e34c96047dd6f91114ac
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 688de64b42dbb29075546e7addead0e9989e2fc522969e2f2f3cf41373472aa3
 """Websocket-Befehle des Notification Center (nur für Administratoren).
 
 ``notification_center/create_blueprint`` schreibt einen aus der Karte
@@ -44,6 +44,7 @@ from .const import (
     CONF_SILENT,
     DOMAIN,
     IMPORT_MODES,
+    MAX_CARD_YAML_CHARS,
     MAX_IMPORTS,
     MAX_INBOUND,
     SEVERITIES,
@@ -394,7 +395,9 @@ def ws_set_severity(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     {
         vol.Required("type"): WS_SET_CARD,
         vol.Required("source"): vol.All(str, vol.Length(min=1, max=64)),
-        vol.Required("card"): vol.Any(None, dict),
+        # Entweder ``yaml`` (Text aus dem Karteneditor) oder ``card`` (Dict, ``None`` entfernt die Karte).
+        vol.Exclusive("yaml", "card_input"): vol.All(str, vol.Length(max=MAX_CARD_YAML_CHARS)),
+        vol.Exclusive("card", "card_input"): vol.Any(None, dict),
     }
 )
 @callback
@@ -404,7 +407,19 @@ def ws_set_card(hass: HomeAssistant, connection: websocket_api.ActiveConnection,
     if hub is None:
         connection.send_error(msg["id"], "not_loaded", "Notification Center ist nicht geladen.")
         return
-    if not hub.async_set_card(msg["source"], msg["card"]):
+    if "yaml" in msg:
+        try:
+            card = hub.parse_card_yaml(msg["yaml"])
+        except ValueError as err:
+            # Nur die Position der Fehlerstelle, keine Inhalte (die Karte übersetzt die Meldung selbst).
+            connection.send_error(msg["id"], "invalid_yaml", str(err))
+            return
+    elif "card" in msg:
+        card = msg["card"]
+    else:
+        connection.send_error(msg["id"], "invalid_card", "yaml or card required")
+        return
+    if not hub.async_set_card(msg["source"], card):
         connection.send_error(msg["id"], "invalid_card", "Die Karte braucht ein Feld „type“ und darf höchstens 4 KB groß sein.")
         return
     connection.send_result(msg["id"], {})

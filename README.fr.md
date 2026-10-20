@@ -21,6 +21,8 @@ Une intégration Home Assistant qui réunit les **messages de tes intégrations*
 - **Origine :** chaque message affiche le logo de l’intégration d’origine (sinon l’icône de la source). Un clic ouvre la popup avec la carte de l’intégration (si elle existe) et « Ouvrir l’intégration »
 - **Attribuer soi-même les niveaux :** dans la roue dentée, tu décides pour chaque type de message s’il est critique, avertissement, info ou OK. **Import :** des règles et le service `notification_center.report` font des intégrations sans interface propre des sources, p. ex. Watchman
 - **Entrées (mappage) :** tu décides quel champ d’une autre intégration devient titre, texte, clé et niveau. Cela permet de connecter toute intégration qui déclenche un événement ou appelle une action
+- **Grouper :** en plus du tri, les listes peuvent être groupées, p. ex. les messages par intégration, urgence ou type de message. Les groupes sont repliables
+- **Carte popup en YAML :** colle simplement le code de l’éditeur de carte, pas besoin de JSON
 
 ## Prérequis
 
@@ -30,7 +32,7 @@ Une intégration Home Assistant qui réunit les **messages de tes intégrations*
 
 ## Installation
 
-**HACS :** ajoute le dépôt personnalisé `https://github.com/Meine-smarte-Welt/notification_center` (catégorie *Intégration*), installe « Notification Center », redémarre Home Assistant. Tu ne vois les préversions (bêta/RC) que si tu actives « Afficher les versions bêta » dans HACS.
+**HACS :** ajoute le dépôt personnalisé `https://github.com/Meine-smarte-Welt/notification_center` (catégorie *Intégration*), installe « Notification Center », redémarre Home Assistant.
 
 **Manuel :** copie le dossier `custom_components/notification_center` dans ton répertoire `config` et redémarre.
 
@@ -72,6 +74,7 @@ entities:
 | `default_sort` | Tri par défaut (`default`, `newest`, `oldest`, `title`) |
 | `show_messages … show_settings` | Chaque catégorie s’active/désactive séparément (au moins une reste visible) |
 | `show_search / show_filter_bar / show_stats` | Champ de recherche, choix du tri, pastilles statistiques/filtres |
+| `show_group_by` / `default_group_by` | Afficher le choix du groupement ; groupement par défaut (`none`, `integration`, `severity`, `type`, selon la liste) |
 | `max_rows` | Nombre maximal de lignes (0 = toutes) |
 | `zoom` | Mise à l’échelle de la carte en pourcentage (50-150) |
 | `read_only` | masque tous les éléments qui modifient quelque chose |
@@ -220,11 +223,11 @@ Les grands attributs ne sont pas stockés dans la base de données à long terme
 
 ## Affichage de la version et avis de mise à jour
 
-La version apparaît à trois endroits : dans la roue dentée (Version de l’application), en haut de l’éditeur de la carte (`Carte 1.1.1b2 · Intégration 1.1.1b2`) et dans la boîte de dialogue des options. L’intégration interroge `api.github.com` au démarrage puis toutes les 12 heures (préversions incluses pour bêta/RC). Nouvelle version → avis orange, « ↑ » sur la roue dentée ; carte et intégration de versions différentes (cache du navigateur) → orange aussi ; GitHub inaccessible → « Vérification impossible », la carte continue de fonctionner.
+La version apparaît à trois endroits : dans la roue dentée (Version de l’application), en haut de l’éditeur de la carte (`Carte 1.2.0 · Intégration 1.2.0`) et dans la boîte de dialogue des options. L’intégration interroge `api.github.com` au démarrage puis toutes les 12 heures. Nouvelle version → avis orange, « ↑ » sur la roue dentée ; carte et intégration de versions différentes (cache du navigateur) → orange aussi ; GitHub inaccessible → « Vérification impossible », la carte continue de fonctionner.
 
 ## Paramètres (roue dentée)
 
-Ordre fixe des accordéons : **Version de l’application** · **Sources** · **Options** (mode silencieux, distribution) · **Maintenance** (message de test, tout acquitter, vider l’historique, chacun avec confirmation en deux clics) · **Événements** (journal depuis le démarrage, sans contenu). Seuls les administrateurs peuvent modifier. S’y ajoutent les **Imports** (créer, modifier, supprimer des règles) et, par source, le **choix du niveau** par type de message ainsi que la **carte popup** (carte Lovelace en JSON).
+Ordre fixe des accordéons : **Version de l’application** · **Sources** · **Options** (mode silencieux, distribution) · **Maintenance** (message de test, tout acquitter, vider l’historique, chacun avec confirmation en deux clics) · **Événements** (journal depuis le démarrage, sans contenu). Seuls les administrateurs peuvent modifier. S’y ajoutent les **Imports** (créer, modifier, supprimer des règles) et, par source, le **choix du niveau** par type de message ainsi que la **carte popup** (carte Lovelace en YAML, colle simplement le code de l’éditeur de carte).
 
 ## Widget Android
 
@@ -252,10 +255,11 @@ Sous la liste, tu peux assembler des scripts, des blueprints de script et des bl
 - Les notifications persistantes sont lues de façon défensive depuis un stockage interne de Home Assistant ; si cela change, la catégorie reste vide.
 - Les traductions néerlandaise, française et espagnole sont automatiques et non vérifiées par des locuteurs natifs - corrections bienvenues.
 - Les scripts et blueprints sont seulement créés ; modifier et supprimer se fait dans Home Assistant.
-- **La nouveauté de 1.1.1b1 n’est testée qu’avec des données simulées** (hub contre le noyau Home Assistant, carte dans un navigateur headless). Le logo vient du proxy de marques de Home Assistant (`/api/brands/integration/<domain>/icon.png`) ; s’il n’y en a pas, l’icône de la source s’affiche. Ni l’un ni l’autre n’a été vu sur une vraie instance.
+- **Le logo d’origine, les imports et la carte popup ne sont testés qu’avec des données simulées** (hub contre le noyau Home Assistant, carte dans un navigateur headless). Le logo vient du proxy de marques de Home Assistant (`/api/brands/integration/<domain>/icon.png`) ; s’il n’y en a pas, l’icône de la source s’affiche. Ni l’un ni l’autre n’a été vu sur une vraie instance.
 - La carte popup est créée via l’assistant de cartes de Home Assistant. Les cartes qui ont besoin de leur propre ressource doivent être chargées sur ton tableau de bord.
 - L’import du rapport Watchman en texte via `notification_center.report` n’est pas testé avec une vraie installation de Watchman. Les imports sont limités à 30 règles ; les modèles s’exécutent avec les droits d’administrateur.
-- **Nouveauté de 1.1.1b2 testée uniquement avec des données simulées.** Une règle d’entrée a besoin d’une intégration qui déclenche un événement ou appelle une action. Les intégrations qui travaillent uniquement en interne ne se connectent que par leurs entités (Imports). Limité à 30 règles ; les modèles s’exécutent avec les droits d’administrateur.
+- **Règles d’entrée testées uniquement avec des données simulées.** Une règle d’entrée a besoin d’une intégration qui déclenche un événement ou appelle une action. Les intégrations qui travaillent uniquement en interne ne se connectent que par leurs entités (Imports). Limité à 30 règles ; les modèles s’exécutent avec les droits d’administrateur.
+- **Le groupement, la saisie YAML de la carte popup et la correction du défilement (nouveauté de 1.2.0) ne sont testés qu’avec des données simulées.** Que les barres de défilement restent vraiment en place dans ton navigateur et ton tableau de bord n’est pas vérifié. La carte popup a besoin d’un champ `type` et ne doit pas dépasser 4 Ko ; les ancres YAML (`&`, `*`) ne sont pas acceptées. Les tests du hub contre le noyau Home Assistant n’ont pas été relancés pour 1.2.0 ; le backend est seulement vérifié pour la syntaxe, l’analyseur YAML testé séparément.
 
 ## Dépannage
 
@@ -273,21 +277,17 @@ Chaque `.py`, `.js` et `.yaml` commence par un en-tête SHA256 (contenu à parti
 
 ## Historique des versions
 
-### 1.1.1b2 (préversion)
+### 1.2.0
 
-- Nouveau : **Entrées** (roue dentée) : un événement ou le service `notification_center.inbound` est associé par des modèles au titre, au texte, à la clé et au niveau, avec table de valeurs pour le niveau, condition de fermeture et affichage du dernier contenu reçu
-- Nouveau : service `notification_center.inbound` (champ `rule`, autres champs libres)
-- Nouveau : commandes websocket `set_inbound` et `delete_inbound` (administrateurs)
-- Nouveau : exemple `examples/inbound_watchman.yaml`
-- Après la mise à jour, redémarre Home Assistant et vide le cache du navigateur (Ctrl+F5)
-
-### 1.1.1b1 (préversion)
-
+- Nouveau : **groupement** en plus du tri : messages par intégration, urgence ou type de message, mises à jour par intégration, réparations par intégration ou urgence ; les groupes sont repliables. Clés de carte `show_group_by` et `default_group_by`
+- Nouveau : **carte popup en YAML** : colle simplement le code de l’éditeur de carte (le JSON fonctionne toujours). Le champ affiche aussi la carte enregistrée en YAML
+- Corrigé : les **barres de défilement** de la barre des catégories et de la popup ainsi que la position de défilement de la page ne reviennent plus en arrière. La carte ne se redessine que lorsque ses propres capteurs changent
 - Nouveau : **origine** de chaque message (logo de l’intégration), popup avec la **carte de l’intégration** et « Ouvrir l’intégration »
-- Nouveau : **attribution des niveaux** par type de message dans la roue dentée (valable aussi pour le push et le tri)
-- Nouveau : **import** par des règles (roue dentée → Imports, avec un modèle Watchman) et le service `notification_center.report`
-- Nouveau : champs facultatifs `domain` et `card` dans l’enregistrement (le schéma 1 reste compatible)
-- Corrigé : les textes longs étaient tronqués à 200 caractères lors de l’assemblage (maintenant 2000)
+- Nouveau : **attribution du niveau** par type de message dans la roue dentée (aussi pour le push et le tri)
+- Nouveau : **import** par règles (roue dentée → Imports, avec modèle Watchman) et le service `notification_center.report`
+- Nouveau : **entrées** (roue dentée) : un événement ou le service `notification_center.inbound` est associé par modèles au titre, au texte, à la clé et au niveau, avec table de valeurs pour le niveau, condition de fermeture et affichage du dernier contenu reçu
+- Nouveau : champs facultatifs `domain` et `card` dans l’enregistrement (le schéma 1 reste compatible) ; exemple `examples/inbound_watchman.yaml`
+- Corrigé : les textes longs étaient coupés à 200 caractères à l’assemblage (maintenant 2000)
 - Après la mise à jour, redémarre Home Assistant et vide le cache du navigateur (Ctrl+F5)
 
 ### 1.0.0

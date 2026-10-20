@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 19af7b9983240d2929c5794d66cb6216f9dfa95eede73449203b6e5120f208d8
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 5bda8dafc0ba4b36465db3aef918f4c14e09610713248bd5442e16d7330a8760
 """Sensor-Plattform der Benachrichtigungszentrale.
 
 Legt drei Sensoren an. Jeder Sensor zählt seine Kategorie als Zustand und
@@ -30,6 +30,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EVENT_STATE_CHANGED
 from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
@@ -219,15 +220,19 @@ class UpdatesSensor(_BaseSummarySensor):
     @callback
     def _async_refresh(self) -> None:
         items = []
+        registry = er.async_get(self.hass)
         for state in self.hass.states.async_all("update"):
             if state.state != "on":
                 continue
             latest = state.attributes.get("latest_version")
             if state.attributes.get("skipped_version") == latest:
                 continue
+            entry = registry.async_get(state.entity_id)
             items.append(
                 {
                     "entity_id": state.entity_id,
+                    # Integration (Plattform der Entität), dient der Gruppierung in der Karte
+                    "domain": entry.platform if entry and entry.platform else None,
                     "title": state.attributes.get("friendly_name", state.entity_id),
                     "installed_version": state.attributes.get("installed_version"),
                     "latest_version": latest,

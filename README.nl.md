@@ -21,6 +21,8 @@ Een Home Assistant-integratie die **meldingen van je integraties**, **notificati
 - **Herkomst:** elke melding toont het logo van de oorspronkelijke integratie (anders het pictogram van de bron). Een klik opent de popup met de kaart van de integratie (indien aanwezig) en „Integratie openen”
 - **Niveaus zelf toewijzen:** in het tandwiel bepaal je per meldingstype of het kritiek, waarschuwing, info of in orde is. **Import:** regels en de service `notification_center.report` maken van integraties zonder eigen interface bronnen, bijv. Watchman
 - **Invoer (toewijzing):** jij bepaalt welk veld van een andere integratie titel, tekst, sleutel en niveau wordt. Zo koppel je elke integratie die een gebeurtenis activeert of een actie aanroept
+- **Groeperen:** naast sorteren kun je lijsten groeperen, bijv. meldingen per integratie, urgentie of meldingstype. Groepen zijn inklapbaar
+- **Popupkaart als YAML:** plak gewoon de code uit de kaarteditor, JSON is niet nodig
 
 ## Vereisten
 
@@ -30,7 +32,7 @@ Een Home Assistant-integratie die **meldingen van je integraties**, **notificati
 
 ## Installatie
 
-**HACS:** voeg de aangepaste repository `https://github.com/Meine-smarte-Welt/notification_center` toe (categorie *Integratie*), installeer „Notification Center” en herstart Home Assistant. Voorlopige versies (bèta/RC) zie je alleen als je in HACS „Bètaversies tonen” inschakelt.
+**HACS:** voeg de aangepaste repository `https://github.com/Meine-smarte-Welt/notification_center` toe (categorie *Integratie*), installeer „Notification Center” en herstart Home Assistant.
 
 **Handmatig:** kopieer de map `custom_components/notification_center` naar je `config`-map en herstart.
 
@@ -72,6 +74,7 @@ entities:
 | `default_sort` | Standaardsortering (`default`, `newest`, `oldest`, `title`) |
 | `show_messages … show_settings` | Elke categorie apart aan/uit (minstens één blijft zichtbaar) |
 | `show_search / show_filter_bar / show_stats` | Zoekveld, sorteerkeuze, statistiek-/filterchips |
+| `show_group_by` / `default_group_by` | Groeperingskeuze tonen; standaardgroepering (`none`, `integration`, `severity`, `type`, afhankelijk van de lijst beschikbaar) |
 | `max_rows` | Maximaal aantal rijen (0 = alle) |
 | `zoom` | Schaling van de kaart in procenten (50-150) |
 | `read_only` | verbergt alle bedieningselementen die iets wijzigen |
@@ -220,11 +223,11 @@ De grote attributen worden niet in de langetermijndatabase opgeslagen.
 
 ## Versieweergave en updatemelding
 
-De versie staat op drie plaatsen: in het tandwiel (App-versie), bovenaan in de kaarteditor (`Kaart 1.1.1b2 · Integratie 1.1.1b2`) en in het optiesdialoog. De integratie vraagt bij het starten en daarna elke 12 uur `api.github.com` (bij bèta/RC ook voorlopige versies). Nieuwe versie → oranje melding, „↑” bij het tandwiel; kaart en integratie met verschillende versie (browsercache) → ook oranje; GitHub onbereikbaar → „Controle niet mogelijk”, de kaart blijft gewoon werken.
+De versie staat op drie plaatsen: in het tandwiel (App-versie), bovenaan in de kaarteditor (`Kaart 1.2.0 · Integratie 1.2.0`) en in het optiesdialoog. De integratie vraagt bij het starten en daarna elke 12 uur `api.github.com`. Nieuwe versie → oranje melding, „↑” bij het tandwiel; kaart en integratie met verschillende versie (browsercache) → ook oranje; GitHub onbereikbaar → „Controle niet mogelijk”, de kaart blijft gewoon werken.
 
 ## Instellingen (tandwiel)
 
-Vaste volgorde van de accordeons: **App-versie** · **Bronnen** · **Opties** (stille modus, bezorging) · **Onderhoud** (testmelding, alles bevestigen, geschiedenis wissen, telkens met bevestiging met twee klikken) · **Gebeurtenissen** (log sinds de start, zonder inhoud). Alleen beheerders mogen wijzigen. Daarbij komen **Imports** (regels maken, bewerken, verwijderen) en per bron de **niveaukeuze** per meldingstype en de **popupkaart** (Lovelace-kaart als JSON).
+Vaste volgorde van de accordeons: **App-versie** · **Bronnen** · **Opties** (stille modus, bezorging) · **Onderhoud** (testmelding, alles bevestigen, geschiedenis wissen, telkens met bevestiging met twee klikken) · **Gebeurtenissen** (log sinds de start, zonder inhoud). Alleen beheerders mogen wijzigen. Daarbij komen **Imports** (regels maken, bewerken, verwijderen) en per bron de **niveaukeuze** per meldingstype en de **popupkaart** (Lovelace-kaart als YAML, plak gewoon de code uit de kaarteditor).
 
 ## Android-widget
 
@@ -252,10 +255,11 @@ Onder de lijst kun je scripts, script-blueprints en automatiserings-blueprints s
 - Blijvende notificaties leest de integratie defensief uit een interne opslag van Home Assistant; verandert dat, dan blijft de categorie leeg.
 - De Nederlandse, Franse en Spaanse vertalingen zijn machinaal gemaakt en niet door moedertaalsprekers gecontroleerd - correcties welkom.
 - Scripts en blueprints worden alleen aangemaakt; bewerken en verwijderen gebeurt in Home Assistant.
-- **Nieuw in 1.1.1b1 is alleen met gesimuleerde gegevens getest** (hub tegen de Home Assistant-kern, kaart in een headless browser). Het logo komt van de brand-proxy van Home Assistant (`/api/brands/integration/<domain>/icon.png`); is er geen, dan verschijnt het pictogram van de bron. Beide zijn niet op een echte instantie gezien.
+- **Herkomstlogo, imports en popupkaart zijn alleen met gesimuleerde gegevens getest** (hub tegen de Home Assistant-kern, kaart in een headless browser). Het logo komt van de brand-proxy van Home Assistant (`/api/brands/integration/<domain>/icon.png`); is er geen, dan verschijnt het pictogram van de bron. Beide zijn niet op een echte instantie gezien.
 - De popupkaart wordt via de kaarthelper van Home Assistant gemaakt. Kaarten die een eigen resource nodig hebben, moeten op je dashboard geladen zijn.
 - Het importeren van het Watchman-rapport als tekst via `notification_center.report` is niet met een echte Watchman-installatie getest. Imports zijn beperkt tot 30 regels; sjablonen draaien met beheerdersrechten.
-- **Nieuw in 1.1.1b2 alleen met gesimuleerde gegevens getest.** Een invoerregel heeft een integratie nodig die een gebeurtenis activeert of een actie aanroept. Integraties die alleen intern werken, koppel je alleen via hun entiteiten (Imports). Beperkt tot 30 regels; sjablonen draaien met beheerdersrechten.
+- **Invoerregels alleen met gesimuleerde gegevens getest.** Een invoerregel heeft een integratie nodig die een gebeurtenis activeert of een actie aanroept. Integraties die alleen intern werken, koppel je alleen via hun entiteiten (Imports). Beperkt tot 30 regels; sjablonen draaien met beheerdersrechten.
+- **Groepering, YAML-invoer van de popupkaart en de scroll-fix (nieuw in 1.2.0) zijn alleen met gesimuleerde gegevens getest.** Of de schuifbalken in jouw browser en dashboard echt blijven staan, is niet getest. De popupkaart heeft een veld `type` nodig en mag hooguit 4 KB groot zijn; YAML-ankers (`&`, `*`) worden niet geaccepteerd. De hubtests tegen de Home Assistant-kern zijn voor 1.2.0 niet opnieuw uitgevoerd; de backend is alleen op syntaxis gecontroleerd, de YAML-parser afzonderlijk getest.
 
 ## Probleemoplossing
 
@@ -273,21 +277,17 @@ Elke `.py`, `.js` en `.yaml` begint met een SHA256-header (inhoud vanaf regel 2)
 
 ## Versiegeschiedenis
 
-### 1.1.1b2 (voorlopige versie)
+### 1.2.0
 
-- Nieuw: **Invoer** (tandwiel): een gebeurtenis of de service `notification_center.inbound` wordt via sjablonen aan titel, tekst, sleutel en niveau toegewezen, met waardentabel voor het niveau, sluitvoorwaarde en weergave van de laatst ontvangen inhoud
-- Nieuw: service `notification_center.inbound` (veld `rule`, willekeurige verdere velden)
-- Nieuw: websocket-commando's `set_inbound` en `delete_inbound` (alleen beheerders)
-- Nieuw: voorbeeld `examples/inbound_watchman.yaml`
-- Herstart Home Assistant na de update en wis de browsercache (Ctrl+F5)
-
-### 1.1.1b1 (voorlopige versie)
-
+- Nieuw: **groeperen** naast sorteren: meldingen per integratie, urgentie of meldingstype, updates per integratie, reparaties per integratie of urgentie; groepen zijn inklapbaar. Kaartsleutels `show_group_by` en `default_group_by`
+- Nieuw: **popupkaart als YAML:** plak gewoon de code uit de kaarteditor (JSON werkt nog steeds). Het veld toont de opgeslagen kaart ook als YAML
+- Opgelost: de **schuifbalken** van de categoriebalk en de popup en de schuifpositie van de pagina springen niet meer terug. De kaart tekent alleen opnieuw als haar eigen sensoren veranderen
 - Nieuw: **herkomst** van elke melding (logo van de integratie), popup met de **kaart van de integratie** en „Integratie openen”
-- Nieuw: **niveautoewijzing** per meldingstype in het tandwiel (werkt ook voor push en sortering)
+- Nieuw: **niveautoewijzing** per meldingstype in het tandwiel (ook voor push en sortering)
 - Nieuw: **import** via regels (tandwiel → Imports, met Watchman-sjabloon) en de service `notification_center.report`
-- Nieuw: optionele velden `domain` en `card` in de aanmelding (schema 1 blijft compatibel)
-- Opgelost: lange teksten werden bij het samenstellen op 200 tekens afgekapt (nu 2000)
+- Nieuw: **invoer** (tandwiel): een gebeurtenis of de service `notification_center.inbound` wordt via sjablonen aan titel, tekst, sleutel en niveau gekoppeld, met waardetabel voor het niveau, sluitvoorwaarde en weergave van de laatst ontvangen inhoud
+- Nieuw: optionele velden `domain` en `card` in de aanmelding (schema 1 blijft compatibel); voorbeeld `examples/inbound_watchman.yaml`
+- Opgelost: lange teksten werden bij het samenstellen tot 200 tekens ingekort (nu 2000)
 - Herstart Home Assistant na de update en wis de browsercache (Ctrl+F5)
 
 ### 1.0.0

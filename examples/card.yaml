@@ -1,5 +1,5 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): ab42daac2cdd8c950c348adeaae9c6ce80532f2f5693af93f6d621e671e8a303
-# Beispiel: Dashboard-Karte (Notification Center 1.0.0)
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 9fa5abfa507e0bdc3595978d41e8bddd01a03fdf2c747b1efe340ff14bd7ce03
+# Beispiel: Dashboard-Karte (Notification Center 1.2.0)
 type: custom:notification-center-card
 title: Notification Center
 show_title: true
@@ -15,6 +15,8 @@ show_settings: true
 show_search: true
 show_filter_bar: true
 show_stats: true
+show_group_by: true
+default_group_by: none         # none | integration | severity | type (je nach Liste verfügbar)
 show_builder: true
 read_only: false
 zoom: 100

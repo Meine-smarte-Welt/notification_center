@@ -21,6 +21,8 @@ A Home Assistant integration that combines **messages from your integrations**, 
 - **Origin:** every message shows the logo of the originating integration (otherwise the source's icon). Clicking opens the popup with the integration's card (if any) and “Open integration”
 - **Assign levels yourself:** in the cog you decide per message type whether it is critical, warning, info or OK. **Import:** rules and the service `notification_center.report` turn integrations without their own interface into sources, e.g. Watchman
 - **Inbound (mapping):** you decide which field of another integration becomes title, text, key and level. This connects any integration that fires an event or calls an action
+- **Grouping:** besides sorting, lists can be grouped, e.g. messages by integration, urgency or message type. Groups can be collapsed
+- **Popup card as YAML:** just paste the code from the card editor, no JSON needed
 
 ## Requirements
 
@@ -30,7 +32,7 @@ A Home Assistant integration that combines **messages from your integrations**, 
 
 ## Installation
 
-**HACS:** add the custom repository `https://github.com/Meine-smarte-Welt/notification_center` (category *Integration*), install “Notification Center”, restart Home Assistant. You only see pre-releases (beta/RC) if you enable “Show beta versions” in HACS.
+**HACS:** add the custom repository `https://github.com/Meine-smarte-Welt/notification_center` (category *Integration*), install “Notification Center”, restart Home Assistant.
 
 **Manual:** copy the folder `custom_components/notification_center` into your `config` directory and restart.
 
@@ -72,6 +74,7 @@ entities:
 | `default_sort` | Default sorting (`default`, `newest`, `oldest`, `title`) |
 | `show_messages … show_settings` | Every category can be switched on/off (at least one stays visible) |
 | `show_search / show_filter_bar / show_stats` | Search field, sort selection, statistic/filter chips |
+| `show_group_by` / `default_group_by` | Show the grouping selection; default grouping (`none`, `integration`, `severity`, `type`, available depending on the list) |
 | `max_rows` | Maximum rows (0 = all) |
 | `zoom` | Card scaling in percent (50-150) |
 | `read_only` | hides every control that changes something |
@@ -220,11 +223,11 @@ The large attributes are not stored in the long-term database.
 
 ## Version display and update notice
 
-The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.1.1b2 · Integration 1.1.1b2`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours (including pre-releases for beta/RC). New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
+The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.2.0 · Integration 1.2.0`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours. New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
 
 ## Settings (cog)
 
-Fixed order of the accordions: **App version** · **Sources** · **Options** (silent mode, delivery) · **Maintenance** (test message, acknowledge all, clear history, each with two-click confirmation) · **Events** (log since start, without contents). Only administrators can change things. Also **Imports** (create, edit, delete rules) and, per source, the **level choice** per message type and the **popup card** (Lovelace card as JSON).
+Fixed order of the accordions: **App version** · **Sources** · **Options** (silent mode, delivery) · **Maintenance** (test message, acknowledge all, clear history, each with two-click confirmation) · **Events** (log since start, without contents). Only administrators can change things. Also **Imports** (create, edit, delete rules) and, per source, the **level choice** per message type and the **popup card** (Lovelace card as YAML, just paste the code from the card editor).
 
 ## Android widget
 
@@ -252,10 +255,11 @@ Below the list you can click together scripts, script blueprints and automation 
 - Persistent notifications are read defensively from an internal Home Assistant store; if that changes, the category stays empty.
 - The Dutch, French and Spanish translations are machine-made and not checked by native speakers - corrections welcome.
 - Scripts and blueprints are only created; editing and deleting happen in Home Assistant.
-- **New in 1.1.1b1 is only tested with simulated data** (hub against the Home Assistant core, card in a headless browser). The logo comes from Home Assistant's brand proxy (`/api/brands/integration/<domain>/icon.png`); if there is none, the source's icon is shown. Neither was seen on a real instance.
+- **Origin logo, imports and popup card are only tested with simulated data** (hub against the Home Assistant core, card in a headless browser). The logo comes from Home Assistant's brand proxy (`/api/brands/integration/<domain>/icon.png`); if there is none, the source's icon is shown. Neither was seen on a real instance.
 - The popup card is created through Home Assistant's card helper. Cards that need their own resource must be loaded on your dashboard.
 - Importing the Watchman report as text through `notification_center.report` is not tested with a real Watchman installation. Imports are limited to 30 rules; templates run with administrator rights.
-- **New in 1.1.1b2 tested with simulated data only.** An inbound rule needs an integration that fires an event or calls an action. Integrations that work only internally can only be connected through their entities (Imports). Limited to 30 rules; templates run with administrator rights.
+- **Inbound rules tested with simulated data only.** An inbound rule needs an integration that fires an event or calls an action. Integrations that work only internally can only be connected through their entities (Imports). Limited to 30 rules; templates run with administrator rights.
+- **Grouping, YAML input of the popup card and the scroll fix (new in 1.2.0) are only tested with simulated data.** Whether the scrollbars really stay put in your browser and dashboard is untested. The popup card needs a `type` field and may be at most 4 KB; YAML anchors (`&`, `*`) are not accepted. The hub tests against the Home Assistant core were not run again for 1.2.0; the backend is only syntax-checked, the YAML parser tested on its own.
 
 ## Troubleshooting
 
@@ -273,20 +277,16 @@ Every `.py`, `.js` and `.yaml` starts with a SHA256 header (content from line 2)
 
 ## Version history
 
-### 1.1.1b2 (pre-release)
+### 1.2.0
 
-- New: **Inbound** (cog): an event or the service `notification_center.inbound` is mapped through templates to title, text, key and level, with a value table for the level, a close condition and a view of the last received content
-- New: service `notification_center.inbound` (field `rule`, any further fields)
-- New: websocket commands `set_inbound` and `delete_inbound` (admins only)
-- New: example `examples/inbound_watchman.yaml`
-- After the update restart Home Assistant and clear the browser cache (Ctrl+F5)
-
-### 1.1.1b1 (pre-release)
-
+- New: **grouping** besides sorting: messages by integration, urgency or message type, updates by integration, repairs by integration or urgency; groups can be collapsed. Card keys `show_group_by` and `default_group_by`
+- New: **popup card as YAML:** just paste the code from the card editor (JSON still works). The field also shows the saved card as YAML
+- Fixed: the **scrollbars** of the category bar and the popup, and the scroll position of the page, no longer jump back. The card only redraws when its own sensors change
 - New: **origin** of every message (integration logo), popup with the **integration's card** and “Open integration”
 - New: **level assignment** per message type in the cog (also applies to push and sorting)
 - New: **import** through rules (cog → Imports, with a Watchman template) and the service `notification_center.report`
-- New: optional fields `domain` and `card` in the registration (schema 1 stays compatible)
+- New: **Inbound** (cog): an event or the service `notification_center.inbound` is mapped through templates to title, text, key and level, with a value table for the level, a close condition and a view of the last received content
+- New: optional fields `domain` and `card` in the registration (schema 1 stays compatible); example `examples/inbound_watchman.yaml`
 - Fixed: long texts were cut to 200 characters when assembled (now 2000)
 - After the update restart Home Assistant and clear the browser cache (Ctrl+F5)
 

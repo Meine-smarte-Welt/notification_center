@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 77fbb63f7783c17e59d1bafc81319fbdf8e94c8b13edd62709974db5f77bb548
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 1a2c7eaa2e9560c8f7147ad72128a2ffa7abe972a270f9bb79506b4fd8d2303b
 """Zentrale des Notification Center: Meldungen der Integrationen sammeln.
 
 Empfängt die vier Ereignisse der Schnittstelle (Schema 1, siehe README):
@@ -28,6 +28,8 @@ from collections import deque
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import yaml
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
@@ -45,6 +47,7 @@ from .const import (
     INBOUND_PREFIX,
     SAMPLE_BYTES,
     MAX_CARD_BYTES,
+    MAX_CARD_YAML_CHARS,
     SERVICE_PREFIX,
     BUNDLE_WINDOW,
     CARD_VERSION,
@@ -366,6 +369,40 @@ class NotificationHub:
             "icon": icon if isinstance(icon, str) and ICON_RE.match(icon) else None,
             "texts": texts,
         }
+
+    @staticmethod
+    def parse_card_yaml(text: str) -> dict[str, Any]:
+        """Kartencode aus dem Karteneditor (YAML, JSON ist ebenfalls gültig) in ein Dict wandeln.
+
+        Löst ``ValueError`` mit der Position ("Zeile:Spalte") aus, wenn der Text kein gültiges YAML ist.
+        Anker und Verweise (``&``/``*``) sind nicht erlaubt (Schutz vor aufgeblähten Dokumenten).
+        """
+        if not isinstance(text, str) or len(text) > MAX_CARD_YAML_CHARS:
+            raise ValueError("size")
+        try:
+            for event in yaml.parse(text, Loader=yaml.SafeLoader):
+                if isinstance(event, yaml.AliasEvent) or getattr(event, "anchor", None):
+                    raise ValueError("anchor")
+            data = yaml.safe_load(text)
+        except yaml.YAMLError as err:
+            mark = getattr(err, "problem_mark", None)
+            raise ValueError(f"{mark.line + 1}:{mark.column + 1}" if mark else "?") from None
+        # Eine Liste mit genau einer Karte (z. B. aus einem Stapel kopiert) wird akzeptiert.
+        if isinstance(data, list) and len(data) == 1:
+            data = data[0]
+        if not isinstance(data, dict):
+            raise ValueError("type")
+        return data
+
+    @staticmethod
+    def card_to_yaml(card: dict[str, Any] | None) -> str:
+        """Kartenkonfiguration als YAML-Text für das Eingabefeld."""
+        if not card:
+            return ""
+        try:
+            return yaml.safe_dump(card, sort_keys=False, allow_unicode=True, default_flow_style=False).rstrip("\n")
+        except yaml.YAMLError:
+            return ""
 
     @staticmethod
     def _clean_card(card: Any) -> dict[str, Any] | None:
@@ -1108,6 +1145,7 @@ class NotificationHub:
                     "domain": src.get("domain") or source,
                     "imported": bool(src.get("imported")),
                     "card": self.card_for(source, src),
+                    "card_yaml": self.card_to_yaml(self.card_for(source, src)),
                     "card_custom": source in self.prefs["cards"],
                     "types": [
                         {

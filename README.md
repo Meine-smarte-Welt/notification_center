@@ -21,6 +21,8 @@ Eine Home-Assistant-Integration, die **Meldungen deiner Integrationen**, **Benac
 - **Herkunft:** jede Meldung zeigt das Logo der Ursprungs-Integration (sonst das Symbol der Quelle). Ein Klick öffnet das Popup, darin die Karte der Integration (falls vorhanden) und „Integration öffnen“
 - **Stufen selbst zuordnen:** im Zahnrad legst du je Meldungsart fest, ob sie kritisch, Warnung, Info oder in Ordnung ist. **Import:** Regeln und der Service `notification_center.report` machen auch Integrationen ohne eigene Schnittstelle zu Quellen, z. B. Watchman
 - **Eingänge (Zuordnung):** Du legst selbst fest, welches Feld einer anderen Integration zu Titel, Text, Schlüssel und Stufe wird. So lässt sich jede Integration anbinden, die ein Ereignis auslöst oder eine Aktion aufruft
+- **Gruppieren:** neben dem Sortieren lassen sich Listen gruppieren, z. B. Meldungen nach Integration, Dringlichkeit oder Meldungsart. Gruppen sind einklappbar
+- **Popup-Karte als YAML:** den Code aus dem Karteneditor einfach einfügen, kein JSON nötig
 
 ## Voraussetzungen
 
@@ -30,7 +32,7 @@ Eine Home-Assistant-Integration, die **Meldungen deiner Integrationen**, **Benac
 
 ## Installation
 
-**HACS:** Benutzerdefiniertes Repository `https://github.com/Meine-smarte-Welt/notification_center` (Kategorie *Integration*) hinzufügen, „Notification Center“ installieren, Home Assistant neu starten. Vorabversionen (Beta/RC) siehst du nur, wenn du in HACS „Beta-Versionen anzeigen“ aktivierst.
+**HACS:** Benutzerdefiniertes Repository `https://github.com/Meine-smarte-Welt/notification_center` (Kategorie *Integration*) hinzufügen, „Notification Center“ installieren, Home Assistant neu starten.
 
 **Manuell:** Ordner `custom_components/notification_center` in das `config`-Verzeichnis kopieren und neu starten.
 
@@ -72,6 +74,7 @@ entities:
 | `default_sort` | Standard-Sortierung (`default`, `newest`, `oldest`, `title`) |
 | `show_messages … show_settings` | Jede Kategorie einzeln ein-/ausschaltbar (mindestens eine bleibt sichtbar) |
 | `show_search / show_filter_bar / show_stats` | Suchfeld, Sortierauswahl, Statistik-/Filter-Chips |
+| `show_group_by` / `default_group_by` | Gruppierungsauswahl anzeigen; Standard-Gruppierung (`none`, `integration`, `severity`, `type`, je nach Liste verfügbar) |
 | `max_rows` | Höchstzahl der Zeilen (0 = alle) |
 | `zoom` | Skalierung der Karte in Prozent (50-150) |
 | `read_only` | blendet alle Bedienelemente zum Ändern aus |
@@ -220,11 +223,11 @@ Die großen Attribute werden nicht in der Langzeitdatenbank gespeichert.
 
 ## Versionsanzeige und Update-Hinweis
 
-Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.1.1b2 · Integration 1.1.1b2`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab (bei Beta/RC auch Pre-releases). Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
+Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.2.0 · Integration 1.2.0`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab. Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
 
 ## Einstellungen (Zahnrad)
 
-Feste Reihenfolge der Akkordeons: **App-Version** · **Quellen** · **Optionen** (Lautlos-Modus, Zustellung) · **Wartung** (Testmeldung, alle quittieren, Verlauf leeren, jeweils mit Zwei-Klick-Bestätigung) · **Ereignisse** (Protokoll seit Start, ohne Inhalte). Ändern dürfen nur Administratoren. Dazu kommen **Importe** (Regeln anlegen, bearbeiten, löschen) und je Quelle die **Stufen-Auswahl** je Meldungsart sowie die **Popup-Karte** (Lovelace-Karte als JSON).
+Feste Reihenfolge der Akkordeons: **App-Version** · **Quellen** · **Optionen** (Lautlos-Modus, Zustellung) · **Wartung** (Testmeldung, alle quittieren, Verlauf leeren, jeweils mit Zwei-Klick-Bestätigung) · **Ereignisse** (Protokoll seit Start, ohne Inhalte). Ändern dürfen nur Administratoren. Dazu kommen **Importe** (Regeln anlegen, bearbeiten, löschen) und je Quelle die **Stufen-Auswahl** je Meldungsart sowie die **Popup-Karte** (Lovelace-Karte als YAML, einfach den Code aus dem Karteneditor einfügen).
 
 ## Android-Widget
 
@@ -252,10 +255,11 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 - Persistente Benachrichtigungen liest die Integration defensiv aus einem internen Speicher von Home Assistant; ändert sich das, bleibt die Kategorie leer.
 - Die Übersetzungen (Niederländisch, Französisch, Spanisch) sind maschinell erstellt und nicht von Muttersprachlern geprüft - Korrekturen willkommen.
 - Scripts und Blueprints werden nur angelegt; bearbeiten und löschen geschieht in Home Assistant.
-- **Neu in 1.1.1b1 ist nur mit simulierten Daten geprüft** (Hub gegen den Home-Assistant-Kern, Karte im Headless-Browser). Das Logo kommt vom Brand-Proxy von Home Assistant (`/api/brands/integration/<domain>/icon.png`); gibt es keins, erscheint das Symbol der Quelle. Beides wurde nicht an einer echten Instanz gesehen.
+- **Herkunfts-Logo, Importe und Popup-Karte sind nur mit simulierten Daten geprüft** (Hub gegen den Home-Assistant-Kern, Karte im Headless-Browser). Das Logo kommt vom Brand-Proxy von Home Assistant (`/api/brands/integration/<domain>/icon.png`); gibt es keins, erscheint das Symbol der Quelle. Beides wurde nicht an einer echten Instanz gesehen.
 - Die Popup-Karte wird über die Karten-Hilfsfunktion von Home Assistant erzeugt. Karten, die eine eigene Ressource brauchen, müssen auf deinem Dashboard geladen sein.
 - Der Import des Watchman-Berichts als Text über `notification_center.report` ist nicht mit einer echten Watchman-Installation geprüft. Importe sind auf 30 Regeln begrenzt, Vorlagen laufen mit den Rechten eines Administrators.
-- **Neu in 1.1.1b2 nur mit simulierten Daten geprüft.** Eine Eingangs-Regel braucht eine Integration, die ein Ereignis auslöst oder eine Aktion aufruft. Integrationen, die nur intern arbeiten, lassen sich nur über ihre Entitäten (Importe) anbinden. Auf 30 Regeln begrenzt; Vorlagen laufen mit Administrator-Rechten.
+- **Eingänge nur mit simulierten Daten geprüft.** Eine Eingangs-Regel braucht eine Integration, die ein Ereignis auslöst oder eine Aktion aufruft. Integrationen, die nur intern arbeiten, lassen sich nur über ihre Entitäten (Importe) anbinden. Auf 30 Regeln begrenzt; Vorlagen laufen mit Administrator-Rechten.
+- **Gruppierung, YAML-Eingabe der Popup-Karte und Scroll-Fix (neu in 1.2.0) nur mit simulierten Daten geprüft.** Ob die Scrollbalken in deinem Browser und Dashboard wirklich stehen bleiben, ist ungeprüft. Die Popup-Karte braucht ein Feld `type` und darf höchstens 4 KB groß sein; YAML-Anker (`&`, `*`) werden nicht angenommen. Die Hub-Tests gegen den Home-Assistant-Kern wurden für 1.2.0 nicht erneut ausgeführt; das Backend ist nur auf Syntax geprüft, der YAML-Parser einzeln getestet.
 
 ## Fehlerbehebung
 
@@ -273,20 +277,16 @@ Jede `.py`, `.js` und `.yaml` beginnt mit einem SHA256-Header (Inhalt ab Zeile 2
 
 ## Versionshistorie
 
-### 1.1.1b2 (Vorabversion)
+### 1.2.0
 
-- Neu: **Eingänge** (Zahnrad): Ereignis oder Service `notification_center.inbound` wird über Vorlagen Titel, Text, Schlüssel und Stufe zugeordnet, mit Wertetabelle für die Stufe, Schließbedingung und Anzeige des zuletzt empfangenen Inhalts
-- Neu: Service `notification_center.inbound` (Feld `rule`, beliebige weitere Felder)
-- Neu: Websocket-Befehle `set_inbound` und `delete_inbound` (nur Administratoren)
-- Neu: Beispiel `examples/inbound_watchman.yaml`
-- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
-
-### 1.1.1b1 (Vorabversion)
-
+- Neu: **Gruppieren** neben dem Sortieren: Meldungen nach Integration, Dringlichkeit oder Meldungsart, Updates nach Integration, Reparaturen nach Integration oder Dringlichkeit; Gruppen sind einklappbar. Karten-Schlüssel `show_group_by` und `default_group_by`
+- Neu: **Popup-Karte als YAML:** Den Code aus dem Karteneditor einfach einfügen (JSON geht weiterhin). Das Feld zeigt die gespeicherte Karte ebenfalls als YAML
+- Behoben: Die **Scrollbalken** der Kategorie-Leiste und des Popups sowie die Scrollposition der Seite springen nicht mehr zurück. Die Karte zeichnet nur noch neu, wenn sich ihre eigenen Sensoren ändern
 - Neu: **Herkunft** jeder Meldung (Logo der Integration), Popup mit der **Karte der Integration** und „Integration öffnen“
 - Neu: **Stufen-Zuordnung** je Meldungsart im Zahnrad (auch für Push und Sortierung wirksam)
 - Neu: **Import** über Regeln (Zahnrad → Importe, mit Watchman-Vorlage) und den Service `notification_center.report`
-- Neu: optionale Felder `domain` und `card` in der Anmeldung (Schema 1 bleibt kompatibel)
+- Neu: **Eingänge** (Zahnrad): Ereignis oder Service `notification_center.inbound` wird über Vorlagen Titel, Text, Schlüssel und Stufe zugeordnet, mit Wertetabelle für die Stufe, Schließbedingung und Anzeige des zuletzt empfangenen Inhalts
+- Neu: optionale Felder `domain` und `card` in der Anmeldung (Schema 1 bleibt kompatibel); Beispiel `examples/inbound_watchman.yaml`
 - Behoben: lange Texte wurden beim Zusammensetzen auf 200 Zeichen gekürzt (jetzt 2000)
 - Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
 

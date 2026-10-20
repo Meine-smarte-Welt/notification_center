@@ -1,8 +1,8 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 6a0e9838f439ea13c0411211e92032a5e738c2fc855e4de01cca5059ad3ca25d
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): e966c28fbdab589dd9fe8da006e76ef19b453ca1cb12b7a25ab3c47d8cd99f9a
 """Konstanten für das Notification Center."""
 
 DOMAIN = "notification_center"
-VERSION = "1.1.1b2"
+VERSION = "1.2.0"
 GITHUB_OWNER = "Meine-smarte-Welt"
 GITHUB_REPO = "notification_center"
 GITHUB_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}"
@@ -65,6 +65,7 @@ INBOUND_PREFIX = "inbound_"
 MAX_INBOUND = 30
 SAMPLE_BYTES = 1500
 MAX_CARD_BYTES = 4096
+MAX_CARD_YAML_CHARS = 8192
 
 SIGNAL_UPDATED = f"{DOMAIN}_updated"
 

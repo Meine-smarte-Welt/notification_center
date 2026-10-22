@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 86f95912ea6207105a76d68767588e85ce746b15183c1d2c112e8c280ae20e36
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): b959ac4980b4b237f99df2246f5d42cad36826431f63c1bc6b76b83519b4ec04
 """Config Flow für das Notification Center.
 
 Es gibt keine Zugangsdaten zu erfassen - die Integration liest ausschliesslich
@@ -35,9 +35,15 @@ from .const import (
     CONF_HISTORY_DAYS,
     CONF_HISTORY_MAX,
     CONF_RECIPIENTS,
+    CONF_RESTART_GRACE,
+    CONF_RESTART_MUTE,
     CONF_SILENT,
     DEFAULT_HISTORY_DAYS,
     DEFAULT_HISTORY_MAX,
+    DEFAULT_RESTART_GRACE,
+    DEFAULT_RESTART_MUTE,
+    MAX_RESTART_GRACE,
+    MIN_RESTART_GRACE,
     DOMAIN,
     RECIPIENT_PUSH,
     RECIPIENT_TYPES,
@@ -196,6 +202,17 @@ class NotificationCenterOptionsFlow(config_entries.OptionsFlow):
                         CONF_CRITICAL_BYPASS,
                         default=options.get(CONF_CRITICAL_BYPASS, True),
                     ): bool,
+                    vol.Required(
+                        CONF_RESTART_MUTE,
+                        default=options.get(CONF_RESTART_MUTE, DEFAULT_RESTART_MUTE),
+                    ): bool,
+                    vol.Required(
+                        CONF_RESTART_GRACE,
+                        default=options.get(CONF_RESTART_GRACE, DEFAULT_RESTART_GRACE),
+                    ): vol.All(
+                        vol.Coerce(int),
+                        vol.Range(min=MIN_RESTART_GRACE, max=MAX_RESTART_GRACE),
+                    ),
                     vol.Required(
                         CONF_HISTORY_DAYS,
                         default=options.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS),

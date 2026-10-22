@@ -220,10 +220,11 @@ Les grands attributs ne sont pas stockés dans la base de données à long terme
 - **Distribuer quand même les critiques** (activé par défaut) : `critical` contourne le mode silencieux grâce à la fonction d’urgence de la notification du téléphone.
 - **Distribution par urgence :** sans choix personnel, les messages critiques et avertissements sont envoyés en push à tous les profils de téléphone ; info et OK n’apparaissent que dans la carte et le widget.
 - **Regroupement :** les 5 premiers messages de même type en 10 secondes partent individuellement, les suivants sont fusionnés en **un seul** push (« N messages de plus »). Tous les messages individuels restent dans la liste.
+- **Retenir les push après un redémarrage planifié** (activé par défaut, délai de 180 secondes, réglable de 30 à 900) : au démarrage, les intégrations signalent souvent brièvement « hors ligne » (p. ex. Zigbee2MQTT injoignable). Si Home Assistant s’arrête de façon contrôlée (redémarrage depuis l’interface, Supervisor, redémarrage de l’hôte), le Notification Center s’en souvient et n’envoie aucun push pendant le délai après le démarrage. Si un problème persiste après le délai, le push est alors transmis ; ce qui s’est résolu entre-temps n’est jamais envoyé. Après un **plantage ou une coupure de courant** (aucun arrêt propre détecté), les messages arrivent immédiatement comme avant. Tout reste visible dans la carte. Interrupteur : roue dentée → Options ou Configurer ; le délai se règle sous Configurer → Mode silencieux et historique
 
 ## Affichage de la version et avis de mise à jour
 
-La version apparaît à trois endroits : dans la roue dentée (Version de l’application), en haut de l’éditeur de la carte (`Carte 1.2.0 · Intégration 1.2.0`) et dans la boîte de dialogue des options. L’intégration interroge `api.github.com` au démarrage puis toutes les 12 heures. Nouvelle version → avis orange, « ↑ » sur la roue dentée ; carte et intégration de versions différentes (cache du navigateur) → orange aussi ; GitHub inaccessible → « Vérification impossible », la carte continue de fonctionner.
+La version apparaît à trois endroits : dans la roue dentée (Version de l’application), en haut de l’éditeur de la carte (`Carte 1.2.1 · Intégration 1.2.1`) et dans la boîte de dialogue des options. L’intégration interroge `api.github.com` au démarrage puis toutes les 12 heures. Nouvelle version → avis orange, « ↑ » sur la roue dentée ; carte et intégration de versions différentes (cache du navigateur) → orange aussi ; GitHub inaccessible → « Vérification impossible », la carte continue de fonctionner.
 
 ## Paramètres (roue dentée)
 
@@ -260,6 +261,7 @@ Sous la liste, tu peux assembler des scripts, des blueprints de script et des bl
 - L’import du rapport Watchman en texte via `notification_center.report` n’est pas testé avec une vraie installation de Watchman. Les imports sont limités à 30 règles ; les modèles s’exécutent avec les droits d’administrateur.
 - **Règles d’entrée testées uniquement avec des données simulées.** Une règle d’entrée a besoin d’une intégration qui déclenche un événement ou appelle une action. Les intégrations qui travaillent uniquement en interne ne se connectent que par leurs entités (Imports). Limité à 30 règles ; les modèles s’exécutent avec les droits d’administrateur.
 - **Le groupement, la saisie YAML de la carte popup et la correction du défilement (nouveauté de 1.2.0) ne sont testés qu’avec des données simulées.** Que les barres de défilement restent vraiment en place dans ton navigateur et ton tableau de bord n’est pas vérifié. La carte popup a besoin d’un champ `type` et ne doit pas dépasser 4 Ko ; les ancres YAML (`&`, `*`) ne sont pas acceptées. Les tests du hub contre le noyau Home Assistant n’ont pas été relancés pour 1.2.0 ; le backend est seulement vérifié pour la syntaxe, l’analyseur YAML testé séparément.
+- **La retenue des push après un redémarrage (nouveauté de 1.2.1) n’est testée que dans un environnement simulé,** pas sur une vraie instance Home Assistant. Que Home Assistant signale proprement l’arrêt avec ta méthode de redémarrage (interface, Supervisor, arrêt Docker) n’est pas vérifié ; en cas de doute, le push arrive simplement comme avant. Le message de test n’est pas retenu.
 
 ## Dépannage
 
@@ -268,7 +270,7 @@ Sous la liste, tu peux assembler des scripts, des blueprints de script et des bl
 | La carte affiche « Custom element doesn’t exist » | Vider le cache du navigateur (Ctrl+F5) ; en mode YAML, ajouter à la main la ressource `/notification_center_files/notification-center-card.js` (type `module`). |
 | L’onglet « Messages » manque | Le capteur `sensor.notification_center_meldungen` n’existe qu’après le redémarrage avec la 1.0.0. Vérifier l’entrée `entities.messages`. |
 | Aucun message d’une intégration | Roue dentée → Sources : la source est-elle enregistrée ? L’intégration doit être en version 1.0.0 avec « envoyer les messages » activé. |
-| Pas de push | Le mode silencieux est-il activé ? Un profil est-il choisi pour cette urgence (roue dentée → Options) ? Vérifier avec le message de test. |
+| Pas de push | Le mode silencieux est-il activé ? Le délai après un redémarrage est-il encore en cours (roue dentée → Options) ? Un profil est-il choisi pour cette urgence (roue dentée → Options) ? Vérifier avec le message de test. |
 | La vérification de mise à jour échoue | Home Assistant a besoin d’un accès Internet à `api.github.com` ; la carte fonctionne quand même. |
 
 ## Intégrité des fichiers
@@ -276,6 +278,12 @@ Sous la liste, tu peux assembler des scripts, des blueprints de script et des bl
 Chaque `.py`, `.js` et `.yaml` commence par un en-tête SHA256 (contenu à partir de la ligne 2). Vérifier avec `tail -n +2 fichier.py | sha256sum`. Les sommes de contrôle des fichiers JSON sont dans [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Historique des versions
+
+### 1.2.1
+
+- Corrigé : la boîte de dialogue des options (« Configurer ») provoquait l’erreur de journal `Failed to format translation for key 'component.notification_center.options.step.init.title'` (paramètre `version` manquant). Le titre est désormais simplement « Notification Center » ; la version reste dans la description de la boîte de dialogue
+- Nouveau : **retenir les push après un redémarrage planifié** (option, activée par défaut, délai de 180 secondes). Après un arrêt contrôlé, aucun push n’est envoyé au démarrage tant que les intégrations signalent brièvement « hors ligne » ; ce qui persiste ensuite est transmis. Après un plantage ou une coupure de courant, le push arrive immédiatement. Interrupteur dans la carte (roue dentée → Options) et sous Configurer, délai sous Configurer
+- Après la mise à jour, redémarre Home Assistant et vide le cache du navigateur (Ctrl+F5)
 
 ### 1.2.0
 

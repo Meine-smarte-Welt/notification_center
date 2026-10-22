@@ -220,10 +220,11 @@ De grote attributen worden niet in de langetermijndatabase opgeslagen.
 - **Kritieke toch bezorgen** (standaard aan): `critical` omzeilt de stille modus via de urgentiefunctie van de telefoonnotificatie.
 - **Bezorging per urgentie:** zonder eigen keuze krijgen kritieke meldingen en waarschuwingen push op alle telefoonprofielen; info en in orde alleen kaart en widget.
 - **Bundelen:** de eerste 5 gelijksoortige meldingen binnen 10 seconden gaan afzonderlijk uit, verdere worden samengevoegd tot **één** push („N meldingen meer”). Alle afzonderlijke meldingen blijven in de lijst.
+- **Push na geplande herstart tegenhouden** (standaard aan, wachttijd 180 seconden, instelbaar 30 tot 900): integraties melden bij het opstarten vaak even „offline” (bijv. Zigbee2MQTT niet bereikbaar). Sluit Home Assistant gecontroleerd af (herstart via de interface, Supervisor, host-herstart), dan onthoudt het Notification Center dat en verstuurt het na de start tijdens de wachttijd geen push. Bestaat een probleem na de wachttijd nog, dan wordt de push alsnog bezorgd; wat intussen is opgelost, wordt nooit verstuurd. Na een **crash of stroomstoring** (geen nette afsluiting herkend) komen meldingen direct zoals voorheen. In de kaart blijft alles zichtbaar. Schakelaar: tandwiel → Opties of Configureren; de wachttijd stel je in onder Configureren → Stille modus en geschiedenis
 
 ## Versieweergave en updatemelding
 
-De versie staat op drie plaatsen: in het tandwiel (App-versie), bovenaan in de kaarteditor (`Kaart 1.2.0 · Integratie 1.2.0`) en in het optiesdialoog. De integratie vraagt bij het starten en daarna elke 12 uur `api.github.com`. Nieuwe versie → oranje melding, „↑” bij het tandwiel; kaart en integratie met verschillende versie (browsercache) → ook oranje; GitHub onbereikbaar → „Controle niet mogelijk”, de kaart blijft gewoon werken.
+De versie staat op drie plaatsen: in het tandwiel (App-versie), bovenaan in de kaarteditor (`Kaart 1.2.1 · Integratie 1.2.1`) en in het optiesdialoog. De integratie vraagt bij het starten en daarna elke 12 uur `api.github.com`. Nieuwe versie → oranje melding, „↑” bij het tandwiel; kaart en integratie met verschillende versie (browsercache) → ook oranje; GitHub onbereikbaar → „Controle niet mogelijk”, de kaart blijft gewoon werken.
 
 ## Instellingen (tandwiel)
 
@@ -260,6 +261,7 @@ Onder de lijst kun je scripts, script-blueprints en automatiserings-blueprints s
 - Het importeren van het Watchman-rapport als tekst via `notification_center.report` is niet met een echte Watchman-installatie getest. Imports zijn beperkt tot 30 regels; sjablonen draaien met beheerdersrechten.
 - **Invoerregels alleen met gesimuleerde gegevens getest.** Een invoerregel heeft een integratie nodig die een gebeurtenis activeert of een actie aanroept. Integraties die alleen intern werken, koppel je alleen via hun entiteiten (Imports). Beperkt tot 30 regels; sjablonen draaien met beheerdersrechten.
 - **Groepering, YAML-invoer van de popupkaart en de scroll-fix (nieuw in 1.2.0) zijn alleen met gesimuleerde gegevens getest.** Of de schuifbalken in jouw browser en dashboard echt blijven staan, is niet getest. De popupkaart heeft een veld `type` nodig en mag hooguit 4 KB groot zijn; YAML-ankers (`&`, `*`) worden niet geaccepteerd. De hubtests tegen de Home Assistant-kern zijn voor 1.2.0 niet opnieuw uitgevoerd; de backend is alleen op syntaxis gecontroleerd, de YAML-parser afzonderlijk getest.
+- **Push-tegenhouden na een herstart (nieuw in 1.2.1) is alleen in een gesimuleerde omgeving getest,** niet op een echte Home Assistant-instantie. Of Home Assistant bij jouw manier van herstarten (interface, Supervisor, Docker-stop) het afsluiten netjes meldt, is niet getest; bij twijfel komt de push gewoon zoals voorheen. De testmelding wordt niet tegengehouden.
 
 ## Probleemoplossing
 
@@ -268,7 +270,7 @@ Onder de lijst kun je scripts, script-blueprints en automatiserings-blueprints s
 | Kaart toont „Custom element doesn’t exist” | Browsercache wissen (Ctrl+F5); in YAML-modus de resource `/notification_center_files/notification-center-card.js` (type `module`) handmatig toevoegen. |
 | Tab „Meldingen” ontbreekt | De sensor `sensor.notification_center_meldungen` bestaat pas na de herstart met 1.0.0. Controleer de invoer `entities.messages`. |
 | Geen meldingen van een integratie | Tandwiel → Bronnen: is de bron aangemeld? De integratie moet versie 1.0.0 zijn en „meldingen versturen” aan hebben. |
-| Geen push | Staat de stille modus aan? Is voor die urgentie een profiel gekozen (tandwiel → Opties)? Controleer met de testmelding. |
+| Geen push | Staat de stille modus aan? Loopt de wachttijd na een herstart nog (tandwiel → Opties)? Is voor die urgentie een profiel gekozen (tandwiel → Opties)? Controleer met de testmelding. |
 | Updatecontrole mislukt | Home Assistant heeft internettoegang tot `api.github.com` nodig; de kaart werkt gewoon door. |
 
 ## Bestandsintegriteit
@@ -276,6 +278,12 @@ Onder de lijst kun je scripts, script-blueprints en automatiserings-blueprints s
 Elke `.py`, `.js` en `.yaml` begint met een SHA256-header (inhoud vanaf regel 2). Controleren met `tail -n +2 bestand.py | sha256sum`. De controlesommen van de JSON-bestanden staan in [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Versiegeschiedenis
+
+### 1.2.1
+
+- Opgelost: het optiesdialoog („Configureren”) veroorzaakte de logfout `Failed to format translation for key 'component.notification_center.options.step.init.title'` (ontbrekende placeholder `version`). De titel is nu alleen „Notification Center”; de versie staat nog in de beschrijving van het dialoog
+- Nieuw: **push na geplande herstart tegenhouden** (optie, standaard aan, wachttijd 180 seconden). Na gecontroleerd afsluiten gaan er bij het opstarten geen pushberichten uit zolang integraties even „offline” melden; wat daarna nog bestaat, wordt alsnog bezorgd. Na een crash of stroomstoring komt de push direct. Schakelaar in de kaart (tandwiel → Opties) en onder Configureren, wachttijd onder Configureren
+- Herstart Home Assistant na de update en wis de browsercache (Ctrl+F5)
 
 ### 1.2.0
 

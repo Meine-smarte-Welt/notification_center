@@ -1,8 +1,8 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): e966c28fbdab589dd9fe8da006e76ef19b453ca1cb12b7a25ab3c47d8cd99f9a
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 63c4b99969c34ff82f506250b7b6c32ffe663e19e79a432565464bc679656ad2
 """Konstanten für das Notification Center."""
 
 DOMAIN = "notification_center"
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 GITHUB_OWNER = "Meine-smarte-Welt"
 GITHUB_REPO = "notification_center"
 GITHUB_URL = f"https://github.com/{GITHUB_OWNER}/{GITHUB_REPO}"
@@ -45,6 +45,14 @@ CONF_HISTORY_DAYS = "history_days"
 CONF_HISTORY_MAX = "history_max"
 DEFAULT_HISTORY_DAYS = 30
 DEFAULT_HISTORY_MAX = 200
+
+# Push nach kontrolliertem Neustart zurückhalten (Integrationen melden beim Start oft kurz "offline")
+CONF_RESTART_MUTE = "restart_mute"
+CONF_RESTART_GRACE = "restart_grace"
+DEFAULT_RESTART_MUTE = True
+DEFAULT_RESTART_GRACE = 180
+MIN_RESTART_GRACE = 30
+MAX_RESTART_GRACE = 900
 
 # Bündeln: mehr als BUNDLE_LIMIT gleichartige Meldungen in BUNDLE_WINDOW s
 BUNDLE_LIMIT = 5

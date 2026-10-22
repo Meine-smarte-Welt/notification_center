@@ -220,10 +220,11 @@ Los atributos grandes no se guardan en la base de datos a largo plazo.
 - **Entregar igualmente los críticos** (activado por defecto): `critical` se salta el modo silencioso mediante la función de urgencia de la notificación del teléfono.
 - **Entrega por urgencia:** sin elección propia, los mensajes críticos y las advertencias se envían por push a todos los perfiles de teléfono; info y correcto solo aparecen en la tarjeta y el widget.
 - **Agrupación:** los 5 primeros mensajes del mismo tipo en 10 segundos salen por separado, los siguientes se unen en **un solo** push («N mensajes más»). Todos los mensajes individuales permanecen en la lista.
+- **Retener los push tras un reinicio planificado** (activado por defecto, tiempo de 180 segundos, ajustable de 30 a 900): al iniciar, las integraciones suelen informar brevemente de «sin conexión» (p. ej. Zigbee2MQTT no accesible). Si Home Assistant se apaga de forma controlada (reinicio desde la interfaz, Supervisor, reinicio del host), el Notification Center lo recuerda y no envía ningún push durante ese tiempo tras el inicio. Si un problema sigue existiendo pasado el tiempo, el push se entrega entonces; lo que se haya resuelto entretanto nunca se envía. Tras un **fallo o un corte de luz** (no se detecta un apagado limpio) los mensajes llegan de inmediato como antes. Todo sigue visible en la tarjeta. Interruptor: engranaje → Opciones o Configurar; el tiempo se ajusta en Configurar → Modo silencioso e historial
 
 ## Indicación de versión y aviso de actualización
 
-La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.2.0 · Integración 1.2.0`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas. Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
+La versión aparece en tres lugares: en el engranaje (Versión de la aplicación), arriba en el editor de la tarjeta (`Tarjeta 1.2.1 · Integración 1.2.1`) y en el diálogo de opciones. La integración consulta `api.github.com` al iniciar y luego cada 12 horas. Nueva versión → aviso naranja, «↑» en el engranaje; tarjeta e integración con versiones distintas (caché del navegador) → también naranja; GitHub inaccesible → «Comprobación no posible», la tarjeta sigue funcionando.
 
 ## Ajustes (engranaje)
 
@@ -260,6 +261,7 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 - La importación del informe de Watchman como texto con `notification_center.report` no está probada con una instalación real de Watchman. Las importaciones se limitan a 30 reglas; las plantillas se ejecutan con derechos de administrador.
 - **Reglas de entrada solo probadas con datos simulados.** Una regla de entrada necesita una integración que dispare un evento o llame a una acción. Las integraciones que solo trabajan internamente solo se conectan por sus entidades (Importaciones). Limitado a 30 reglas; las plantillas se ejecutan con derechos de administrador.
 - **La agrupación, la entrada YAML de la tarjeta emergente y la corrección del desplazamiento (nuevo en 1.2.0) solo están probados con datos simulados.** Que las barras de desplazamiento se queden realmente quietas en tu navegador y panel está sin comprobar. La tarjeta emergente necesita un campo `type` y no puede superar los 4 KB; los anclajes YAML (`&`, `*`) no se aceptan. Las pruebas del hub contra el núcleo de Home Assistant no se repitieron para 1.2.0; el backend solo está comprobado en sintaxis y el analizador YAML se probó por separado.
+- **La retención de push tras un reinicio (nuevo en 1.2.1) solo está probada en un entorno simulado,** no en una instancia real de Home Assistant. Que Home Assistant notifique limpiamente el apagado con tu forma de reiniciar (interfaz, Supervisor, parada de Docker) está sin comprobar; en caso de duda, el push llega simplemente como antes. El mensaje de prueba no se retiene.
 
 ## Solución de problemas
 
@@ -268,7 +270,7 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 | La tarjeta muestra «Custom element doesn’t exist» | Vacía la caché del navegador (Ctrl+F5); en modo YAML añade a mano el recurso `/notification_center_files/notification-center-card.js` (tipo `module`). |
 | Falta la pestaña «Mensajes» | El sensor `sensor.notification_center_meldungen` solo existe tras reiniciar con la 1.0.0. Revisa la entrada `entities.messages`. |
 | No llegan mensajes de una integración | Engranaje → Orígenes: ¿está registrado el origen? La integración debe ser la versión 1.0.0 con «enviar mensajes» activado. |
-| Sin push | ¿Está activado el modo silencioso? ¿Hay un perfil elegido para esa urgencia (engranaje → Opciones)? Compruébalo con el mensaje de prueba. |
+| Sin push | ¿Está activado el modo silencioso? ¿Sigue en curso el tiempo tras un reinicio (engranaje → Opciones)? ¿Hay un perfil elegido para esa urgencia (engranaje → Opciones)? Compruébalo con el mensaje de prueba. |
 | Falla la comprobación de actualización | Home Assistant necesita acceso a Internet a `api.github.com`; la tarjeta sigue funcionando. |
 
 ## Integridad de archivos
@@ -276,6 +278,12 @@ Bajo la lista puedes montar scripts, blueprints de script y blueprints de automa
 Cada `.py`, `.js` y `.yaml` empieza con una cabecera SHA256 (contenido desde la línea 2). Comprobar con `tail -n +2 archivo.py | sha256sum`. Las sumas de comprobación de los archivos JSON están en [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Historial de versiones
+
+### 1.2.1
+
+- Corregido: el diálogo de opciones («Configurar») provocaba el error de registro `Failed to format translation for key 'component.notification_center.options.step.init.title'` (falta el marcador `version`). El título es ahora solo «Notification Center»; la versión sigue en la descripción del diálogo
+- Nuevo: **retener los push tras un reinicio planificado** (opción, activada por defecto, tiempo de 180 segundos). Tras un apagado controlado no se envían push al iniciar mientras las integraciones informan brevemente de «sin conexión»; lo que siga existiendo después se entrega. Tras un fallo o un corte de luz el push llega de inmediato. Interruptor en la tarjeta (engranaje → Opciones) y en Configurar, tiempo en Configurar
+- Tras la actualización, reinicia Home Assistant y vacía la caché del navegador (Ctrl+F5)
 
 ### 1.2.0
 

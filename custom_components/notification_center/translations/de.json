@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notification Center {version}",
+        "title": "Notification Center",
         "description": "Version {version}. {update_info}\n\nEin Profil bündelt Name und Benachrichtigungsziel. Wechselst du das Smartphone, änderst du nur das Ziel des Profils - Karte und Automationen bleiben unverändert.",
         "menu_options": {
           "add_recipient": "Profil hinzufügen",
@@ -54,10 +54,12 @@
       },
       "settings": {
         "title": "Lautlos-Modus und Verlauf",
-        "description": "Im Lautlos-Modus gehen keine Push-Nachrichten raus; Meldungen bleiben in Karte und Widget sichtbar. Kritische Meldungen können ihn umgehen.",
+        "description": "Im Lautlos-Modus werden keine Push-Nachrichten gesendet; Meldungen bleiben in Karte und Widget sichtbar. Kritische Meldungen können ihn umgehen.\n\nNach einem geplanten Neustart von Home Assistant melden Integrationen oft kurz „offline“. Mit der Rückhalte-Option geht in der gewählten Zeit nach dem Start kein Push raus; Probleme, die danach noch bestehen, werden dann zugestellt. Nach einem Absturz oder Stromausfall kommen Meldungen wie bisher sofort.",
         "data": {
           "silent_mode": "Lautlos-Modus (keine Push-Nachrichten)",
           "critical_bypass": "Kritische trotzdem zustellen",
+          "restart_mute": "Push nach geplantem Neustart zurückhalten",
+          "restart_grace": "Schonfrist nach dem Start (Sekunden)",
           "history_days": "Verlauf behalten (Tage)",
           "history_max": "Verlauf: höchstens (Einträge)"
         }

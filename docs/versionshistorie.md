@@ -1,6 +1,13 @@
 # Versionshistorie
 
-> Neueste Version zuerst. Die Einträge 1.2.0 und 1.0.0 stehen auch in den fünf README-Dateien.
+> Neueste Version zuerst. Die Einträge 1.2.1, 1.2.0 und 1.0.0 stehen auch in den fünf README-Dateien.
+
+### 1.2.1 - Push-Rückhaltung nach Neustart, Fehler im Optionen-Dialog
+
+- **Behoben:** Der Optionen-Dialog („Konfigurieren“) erzeugte im Protokoll `Failed to format translation for key 'component.notification_center.options.step.init.title'` (Platzhalter `version` fehlte im Menü-Titel, 78 Vorkommnisse). Der Titel ist jetzt „Notification Center“, die Version steht in der Beschreibung
+- **Neu:** Option `restart_mute` (Standard an) und `restart_grace` (Standard 180 s, 30 bis 900): Nach einem **kontrollierten** Herunterfahren (Stopp-Ereignis von Home Assistant, im Speicher als `clean_shutdown` vermerkt) wird beim nächsten Hochfahren in der Schonfrist kein Push gesendet. Die Frist beginnt, wenn Home Assistant gestartet ist. Danach wird nur nachgeliefert, was noch aktiv und nicht quittiert ist. Beim Start wird das Merkmal sofort zurückgesetzt: Absturz oder Stromausfall gelten als „nicht sauber“ und Meldungen kommen sofort. Neuladen im Betrieb und Erstinstallation lösen die Rückhaltung nicht aus. Testmeldungen werden nicht zurückgehalten. Meldungen bleiben in Karte und Widget immer sichtbar; im Ereignis-Protokoll steht „Push zurückgehalten (Neustart)“
+- Schalter in der Karte (Zahnrad → Optionen, Websocket-Einstellung `restart_mute`) und im Optionen-Dialog; Schonfrist nur im Optionen-Dialog; Diagnose nennt beide Werte
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
 
 ### 1.2.0 - Gruppieren, Popup-Karte als YAML, Scroll-Fix, Eingänge
 

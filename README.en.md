@@ -220,10 +220,11 @@ The large attributes are not stored in the long-term database.
 - **Still deliver critical messages** (default on): `critical` bypasses silent mode through the urgency feature of the phone notification.
 - **Delivery by urgency:** without your own choice, critical messages and warnings are pushed to all phone profiles; info and OK only appear in card and widget.
 - **Bundling:** the first 5 messages of the same kind within 10 seconds are sent individually, further ones are merged into **one** push (“N more messages”). All individual messages stay in the list.
+- **Hold back push after a planned restart** (default on, grace period 180 seconds, adjustable 30 to 900): integrations often report “offline” for a moment while starting (e.g. Zigbee2MQTT not reachable). If Home Assistant shuts down in a controlled way (restart from the UI, Supervisor, host reboot), the Notification Center remembers that and sends no push during the grace period after start. If a problem still exists after the grace period, the push is delivered then; anything that resolved by then is never sent. After a **crash or power loss** (no clean shutdown detected) messages arrive immediately as before. Everything stays visible in the card. Switch: cog → Options or Configure; set the grace period under Configure → Silent mode and history
 
 ## Version display and update notice
 
-The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.2.0 · Integration 1.2.0`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours. New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
+The version appears in three places: in the cog (App version), at the top of the card editor (`Card 1.2.1 · Integration 1.2.1`) and in the options dialog. The integration asks `api.github.com` at start and every 12 hours. New version → orange notice, “↑” at the cog; card and integration with different versions (browser cache) → also orange; GitHub unreachable → “Check not possible”, the card keeps working.
 
 ## Settings (cog)
 
@@ -260,6 +261,7 @@ Below the list you can click together scripts, script blueprints and automation 
 - Importing the Watchman report as text through `notification_center.report` is not tested with a real Watchman installation. Imports are limited to 30 rules; templates run with administrator rights.
 - **Inbound rules tested with simulated data only.** An inbound rule needs an integration that fires an event or calls an action. Integrations that work only internally can only be connected through their entities (Imports). Limited to 30 rules; templates run with administrator rights.
 - **Grouping, YAML input of the popup card and the scroll fix (new in 1.2.0) are only tested with simulated data.** Whether the scrollbars really stay put in your browser and dashboard is untested. The popup card needs a `type` field and may be at most 4 KB; YAML anchors (`&`, `*`) are not accepted. The hub tests against the Home Assistant core were not run again for 1.2.0; the backend is only syntax-checked, the YAML parser tested on its own.
+- **Push hold-back after a restart (new in 1.2.1) is only tested in a simulated environment,** not on a real Home Assistant instance. Whether Home Assistant reports the shutdown cleanly on your way of restarting (UI, Supervisor, Docker stop) is untested; when in doubt the push simply arrives as before. The test message is not held back.
 
 ## Troubleshooting
 
@@ -268,7 +270,7 @@ Below the list you can click together scripts, script blueprints and automation 
 | Card shows “Custom element doesn’t exist” | Clear the browser cache (Ctrl+F5); in YAML mode add the resource `/notification_center_files/notification-center-card.js` (type `module`) by hand. |
 | “Messages” tab is missing | The sensor `sensor.notification_center_meldungen` only exists after restarting with 1.0.0. Check the `entities.messages` entry. |
 | No messages from an integration | Cog → Sources: is the source registered? The integration must be version 1.0.0 with “send messages” switched on. |
-| No push | Is silent mode on? Is a profile selected for that urgency (cog → Options)? Check with the test message. |
+| No push | Is silent mode on? Is the grace period after a restart still running (cog → Options)? Is a profile selected for that urgency (cog → Options)? Check with the test message. |
 | Update check fails | Home Assistant needs internet access to `api.github.com`; the card keeps working anyway. |
 
 ## File integrity
@@ -276,6 +278,12 @@ Below the list you can click together scripts, script blueprints and automation 
 Every `.py`, `.js` and `.yaml` starts with a SHA256 header (content from line 2). Verify with `tail -n +2 file.py | sha256sum`. Checksums of the JSON files are in [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Version history
+
+### 1.2.1
+
+- Fixed: the options dialog (“Configure”) caused the log error `Failed to format translation for key 'component.notification_center.options.step.init.title'` (missing placeholder `version`). The title is now just “Notification Center”; the version stays in the dialog description
+- New: **hold back push after a planned restart** (option, default on, grace period 180 seconds). After a controlled shutdown no push messages are sent while integrations briefly report “offline” at start; whatever still exists afterwards is delivered. After a crash or power loss the push arrives immediately. Switch in the card (cog → Options) and under Configure, grace period under Configure
+- After the update restart Home Assistant and clear the browser cache (Ctrl+F5)
 
 ### 1.2.0
 

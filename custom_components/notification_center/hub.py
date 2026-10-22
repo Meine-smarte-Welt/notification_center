@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 1a2c7eaa2e9560c8f7147ad72128a2ffa7abe972a270f9bb79506b4fd8d2303b
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): d2abe3c3df27a0922d220706716ae21a94d5715a3879fabb67b9b1c739e63c5d
 """Zentrale des Notification Center: Meldungen der Integrationen sammeln.
 
 Empfängt die vier Ereignisse der Schnittstelle (Schema 1, siehe README):
@@ -31,7 +31,8 @@ from typing import Any
 import yaml
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
+from homeassistant.const import EVENT_HOMEASSISTANT_STOP
+from homeassistant.core import CALLBACK_TYPE, CoreState, Event, HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.helpers.start import async_at_started
@@ -56,9 +57,15 @@ from .const import (
     CONF_HISTORY_DAYS,
     CONF_HISTORY_MAX,
     CONF_RECIPIENTS,
+    CONF_RESTART_GRACE,
+    CONF_RESTART_MUTE,
     CONF_SILENT,
     DEFAULT_HISTORY_DAYS,
     DEFAULT_HISTORY_MAX,
+    DEFAULT_RESTART_GRACE,
+    DEFAULT_RESTART_MUTE,
+    MAX_RESTART_GRACE,
+    MIN_RESTART_GRACE,
     DOMAIN,
     EVENT_PING,
     EVENT_REGISTER,
@@ -199,6 +206,11 @@ class NotificationHub:
         self._bundles: dict[tuple[str, str, str], dict[str, Any]] = {}
         self._warned_schema = False
         self._unsubs: list[CALLBACK_TYPE] = []
+        # Neustart-Schutz: True, wenn Home Assistant zuletzt sauber heruntergefahren wurde
+        self._clean_shutdown = False
+        self._muting = False
+        self._muted: set[str] = set()
+        self._mute_handle: CALLBACK_TYPE | None = None
 
     # ------------------------------------------------------------------
     # Lebenszyklus
@@ -225,6 +237,15 @@ class NotificationHub:
             self._register_inbound(rule)
         self._prune_history()
 
+        # Kontrollierter Neustart? Nur beim Hochfahren auswerten (nicht bei Neuladen im Betrieb).
+        if self.hass.state is not CoreState.running:
+            was_clean = bool(data.get("clean_shutdown", False))
+            self._muting = was_clean and self.restart_mute
+            # Ab jetzt gilt der Lauf als "nicht sauber beendet", bis Home Assistant herunterfährt.
+            # Bei Absturz oder Stromausfall bleibt das Merkmal so aus und Meldungen kommen sofort.
+            self._clean_shutdown = False
+            await self._store.async_save(self._store_data())
+
     @callback
     def async_start(self) -> None:
         """Listener anmelden, Ping senden, Update-Prüfung starten."""
@@ -233,6 +254,11 @@ class NotificationHub:
         self.entry.async_on_unload(bus.async_listen(EVENT_REPORT, self._on_report))
         self.entry.async_on_unload(bus.async_listen(EVENT_SYNC, self._on_sync))
         self.entry.async_on_unload(self.async_stop)
+        self._unsubs.append(bus.async_listen(EVENT_HOMEASSISTANT_STOP, self._on_ha_stop))
+        if self._muting:
+            unsub_mute = async_at_started(self.hass, self._start_mute_timer)
+            if unsub_mute:
+                self._unsubs.append(unsub_mute)
 
         # Ping erst, wenn Home Assistant gestartet ist (Events werden nicht nachgeliefert).
         unsub_start = async_at_started(self.hass, self._send_ping)
@@ -251,8 +277,36 @@ class NotificationHub:
             self.hass, self.async_check_update(), "notification_center_update_check"
         )
 
+    async def _on_ha_stop(self, _event: Event) -> None:
+        """Home Assistant fährt kontrolliert herunter: merken für den nächsten Start."""
+        self._clean_shutdown = True
+        try:
+            await self._store.async_save(self._store_data())
+        except Exception:  # noqa: BLE001 - Herunterfahren darf daran nicht scheitern
+            _LOGGER.debug("Merken des kontrollierten Herunterfahrens fehlgeschlagen")
+
+    @callback
+    def _start_mute_timer(self, _hass: HomeAssistant) -> None:
+        """Nach dem Start läuft die Schonfrist, in der kein Push gesendet wird."""
+        self._mute_handle = async_call_later(self.hass, self.restart_grace, self._end_mute)
+
+    @callback
+    def _end_mute(self, _now_: datetime) -> None:
+        """Schonfrist vorbei: nur noch bestehende Probleme werden nachgeliefert."""
+        self._mute_handle = None
+        self._muting = False
+        held, self._muted = list(self._muted), set()
+        for identity in held:
+            msg = self.messages.get(identity)
+            if msg is None or identity in self.acked:
+                continue  # inzwischen gelöst oder quittiert
+            self._deliver(msg)
+
     @callback
     def async_stop(self) -> None:
+        if self._mute_handle:
+            self._mute_handle()
+            self._mute_handle = None
         self._stop_inbound()
         if self._import_unsub:
             self._import_unsub()
@@ -289,6 +343,18 @@ class NotificationHub:
     @property
     def silent(self) -> bool:
         return bool(self.options.get(CONF_SILENT, False))
+
+    @property
+    def restart_mute(self) -> bool:
+        return bool(self.options.get(CONF_RESTART_MUTE, DEFAULT_RESTART_MUTE))
+
+    @property
+    def restart_grace(self) -> int:
+        try:
+            value = int(self.options.get(CONF_RESTART_GRACE, DEFAULT_RESTART_GRACE))
+        except (TypeError, ValueError):
+            value = DEFAULT_RESTART_GRACE
+        return max(MIN_RESTART_GRACE, min(MAX_RESTART_GRACE, value))
 
     @property
     def critical_bypass(self) -> bool:
@@ -1002,6 +1068,12 @@ class NotificationHub:
     # ------------------------------------------------------------------
     def _deliver(self, msg: dict[str, Any]) -> None:
         severity = msg["severity"]
+        if self._muting and msg["source"] != SELF_SOURCE:
+            # Kontrollierter Neustart: kein Push in der Schonfrist. Besteht das Problem danach
+            # noch, wird es nachgeliefert (siehe _end_mute); gelöst = nie gesendet.
+            self._muted.add(msg["identity"])
+            self._log("push_restart", msg["source"], msg["type"])
+            return
         if self.silent and not (severity == "critical" and self.critical_bypass):
             self._log("push_silent", msg["source"], msg["type"])
             return
@@ -1082,6 +1154,7 @@ class NotificationHub:
             "sources": [s for s in self.sources.values() if s["source"] != SELF_SOURCE],
             "prefs": self.prefs,
             "samples": self.samples,
+            "clean_shutdown": self._clean_shutdown,
         }
 
     def _item(self, msg: dict[str, Any]) -> dict[str, Any]:
@@ -1179,6 +1252,8 @@ class NotificationHub:
             "settings": {
                 "silent_mode": self.silent,
                 "critical_bypass": self.critical_bypass,
+                "restart_mute": self.restart_mute,
+                "restart_grace": self.restart_grace,
                 "history_days": int(self.options.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS)),
                 "history_max": int(self.options.get(CONF_HISTORY_MAX, DEFAULT_HISTORY_MAX)),
                 "profiles": profiles,

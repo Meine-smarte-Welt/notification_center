@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 7276449bddd7c47022b7c93cd2079158f27a21b6d53ad882522025af8150f220
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): efff57f7b3f739329fdb6e5ec9b75aaf8e1f2a9fcc1d22452dfb82c3480a5405
 """Anonymisierter Diagnose-Download.
 
 Enthält nur Zähler, Versionen und Schalterstände - keine Meldungstexte, Namen,
@@ -42,6 +42,8 @@ async def async_get_config_entry_diagnostics(
         "settings": {
             "silent_mode": hub.silent,
             "critical_bypass": hub.critical_bypass,
+            "restart_mute": hub.restart_mute,
+            "restart_grace": hub.restart_grace,
             "profiles": len(hub.options.get("recipients", [])),
             "delivery_counts": {s: len(hub.delivery_for(s)) for s in SEVERITIES},
         },

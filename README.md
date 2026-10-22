@@ -220,10 +220,11 @@ Die großen Attribute werden nicht in der Langzeitdatenbank gespeichert.
 - **Kritische trotzdem zustellen** (Standard an): `critical` umgeht den Lautlos-Modus über die Dringlichkeits-Funktion der Smartphone-Benachrichtigung.
 - **Zustellung je Dringlichkeit:** ohne eigene Auswahl erhalten kritische Meldungen und Warnungen Push auf allen Smartphone-Profilen, Info und „in Ordnung“ nur Karte und Widget.
 - **Bündeln:** Die ersten 5 gleichartigen Meldungen innerhalb von 10 Sekunden gehen einzeln raus, weitere werden zu **einem** Push zusammengefasst („N weitere Meldungen“). Alle Einzelmeldungen bleiben in der Liste.
+- **Push nach geplantem Neustart zurückhalten** (Standard an, Schonfrist 180 Sekunden, einstellbar 30 bis 900): Integrationen melden beim Hochfahren oft kurz „offline“ (z. B. Zigbee2MQTT nicht erreichbar). Fährt Home Assistant kontrolliert herunter (Neustart über die Oberfläche, Supervisor, Host-Neustart), merkt sich das Notification Center das und sendet nach dem Start in der Schonfrist keinen Push. Besteht ein Problem nach der Schonfrist noch, wird der Push dann nachgeliefert; was sich bis dahin gelöst hat, wird nie gesendet. Nach **Absturz oder Stromausfall** (kein sauberes Herunterfahren erkannt) kommen Meldungen sofort wie bisher. In der Karte bleibt alles sichtbar. Schalter: Zahnrad → Optionen oder Konfigurieren; die Schonfrist stellst du unter Konfigurieren → Lautlos-Modus und Verlauf ein
 
 ## Versionsanzeige und Update-Hinweis
 
-Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.2.0 · Integration 1.2.0`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab. Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
+Die Version steht an drei Stellen: im Zahnrad (App-Version), oben im Karten-Editor (`Karte 1.2.1 · Integration 1.2.1`) und im Optionen-Dialog. Die Integration fragt beim Start und danach alle 12 Stunden `api.github.com` ab. Neue Version → orange Hinweis, „↑“ am Zahnrad; Karte und Integration mit unterschiedlicher Version (Browser-Cache) → ebenfalls orange; GitHub nicht erreichbar → „Prüfung nicht möglich“, die Karte läuft normal weiter.
 
 ## Einstellungen (Zahnrad)
 
@@ -260,6 +261,7 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 - Der Import des Watchman-Berichts als Text über `notification_center.report` ist nicht mit einer echten Watchman-Installation geprüft. Importe sind auf 30 Regeln begrenzt, Vorlagen laufen mit den Rechten eines Administrators.
 - **Eingänge nur mit simulierten Daten geprüft.** Eine Eingangs-Regel braucht eine Integration, die ein Ereignis auslöst oder eine Aktion aufruft. Integrationen, die nur intern arbeiten, lassen sich nur über ihre Entitäten (Importe) anbinden. Auf 30 Regeln begrenzt; Vorlagen laufen mit Administrator-Rechten.
 - **Gruppierung, YAML-Eingabe der Popup-Karte und Scroll-Fix (neu in 1.2.0) nur mit simulierten Daten geprüft.** Ob die Scrollbalken in deinem Browser und Dashboard wirklich stehen bleiben, ist ungeprüft. Die Popup-Karte braucht ein Feld `type` und darf höchstens 4 KB groß sein; YAML-Anker (`&`, `*`) werden nicht angenommen. Die Hub-Tests gegen den Home-Assistant-Kern wurden für 1.2.0 nicht erneut ausgeführt; das Backend ist nur auf Syntax geprüft, der YAML-Parser einzeln getestet.
+- **Push-Rückhaltung nach Neustart (neu in 1.2.1) nur mit simulierter Umgebung geprüft,** nicht an einer echten Home-Assistant-Instanz. Ob Home Assistant bei deinem Neustart-Weg (Oberfläche, Supervisor, Docker-Stopp) das Herunterfahren sauber meldet, ist ungeprüft; im Zweifel kommt der Push einfach wie bisher. Die Testmeldung wird nicht zurückgehalten.
 
 ## Fehlerbehebung
 
@@ -268,7 +270,7 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 | Karte zeigt „Custom element doesn’t exist“ | Browser-Cache leeren (Strg+F5); im YAML-Modus die Ressource `/notification_center_files/notification-center-card.js` (Typ `module`) von Hand eintragen. |
 | Tab „Meldungen“ fehlt | Der Sensor `sensor.notification_center_meldungen` existiert erst nach dem Neustart mit 1.0.0. Eintrag `entities.messages` prüfen. |
 | Keine Meldungen aus einer Integration | Zahnrad → Quellen: ist die Quelle angemeldet? Die Integration muss in Version 1.0.0 vorliegen und „Meldungen senden“ eingeschaltet haben. |
-| Kein Push | Ist der Lautlos-Modus an? Ist für die Dringlichkeit ein Profil gewählt (Zahnrad → Optionen)? Mit der Testmeldung prüfen. |
+| Kein Push | Ist der Lautlos-Modus an? Läuft gerade die Schonfrist nach einem Neustart (Zahnrad → Optionen)? Ist für die Dringlichkeit ein Profil gewählt (Zahnrad → Optionen)? Mit der Testmeldung prüfen. |
 | Update-Prüfung schlägt fehl | Home Assistant braucht Internetzugang zu `api.github.com`; die Karte läuft trotzdem normal. |
 
 ## Datei-Integrität
@@ -276,6 +278,12 @@ Unter der Liste lassen sich Scripts, Script-Blueprints und Automations-Blueprint
 Jede `.py`, `.js` und `.yaml` beginnt mit einem SHA256-Header (Inhalt ab Zeile 2). Prüfen mit `tail -n +2 datei.py | sha256sum`. Die Prüfsummen der JSON-Dateien stehen in [docs/datei-integritaet.md](docs/datei-integritaet.md).
 
 ## Versionshistorie
+
+### 1.2.1
+
+- Behoben: Im Optionen-Dialog („Konfigurieren“) erschien im Protokoll die Fehlermeldung `Failed to format translation for key 'component.notification_center.options.step.init.title'` (fehlender Platzhalter `version`). Der Titel heißt jetzt nur noch „Notification Center“; die Version steht weiter in der Beschreibung des Dialogs
+- Neu: **Push nach geplantem Neustart zurückhalten** (Option, Standard an, Schonfrist 180 Sekunden). Nach kontrolliertem Herunterfahren gehen beim Hochfahren keine Push-Nachrichten raus, solange Integrationen kurz „offline“ melden; was danach noch besteht, wird nachgeliefert. Nach Absturz oder Stromausfall kommt der Push sofort. Schalter in der Karte (Zahnrad → Optionen) und unter Konfigurieren, Schonfrist unter Konfigurieren
+- Nach dem Update Home Assistant neu starten und den Browser-Cache leeren (Strg+F5)
 
 ### 1.2.0
 

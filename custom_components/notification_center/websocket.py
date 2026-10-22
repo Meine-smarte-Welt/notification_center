@@ -1,4 +1,4 @@
-# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 688de64b42dbb29075546e7addead0e9989e2fc522969e2f2f3cf41373472aa3
+# SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 8545a52aa38420690c6debba69fafbd454fc935b469c86d68dbde1ca27139528
 """Websocket-Befehle des Notification Center (nur für Administratoren).
 
 ``notification_center/create_blueprint`` schreibt einen aus der Karte
@@ -39,6 +39,7 @@ from .builders import (
 )
 from .const import (
     CONF_CRITICAL_BYPASS,
+    CONF_RESTART_MUTE,
     CONF_DELIVERY,
     CONF_RECIPIENTS,
     CONF_SILENT,
@@ -115,7 +116,11 @@ _IMPORT_SCHEMA = vol.Schema(
     }
 )
 
-_SETTING_KEYS = {"silent_mode": CONF_SILENT, "critical_bypass": CONF_CRITICAL_BYPASS}
+_SETTING_KEYS = {
+    "silent_mode": CONF_SILENT,
+    "critical_bypass": CONF_CRITICAL_BYPASS,
+    "restart_mute": CONF_RESTART_MUTE,
+}
 
 
 def _get_hub(hass: HomeAssistant):

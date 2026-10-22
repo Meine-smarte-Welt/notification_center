@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notification Center {version}",
+        "title": "Notification Center",
         "description": "Versie {version}. {update_info}\n\nEen profiel bundelt een naam en een meldingsdoel. Wissel je van telefoon, dan verander je alleen het doel van het profiel - kaart en automatiseringen blijven ongewijzigd.",
         "menu_options": {
           "add_recipient": "Profiel toevoegen",
@@ -54,10 +54,12 @@
       },
       "settings": {
         "title": "Stille modus en geschiedenis",
-        "description": "In de stille modus worden geen pushberichten verstuurd; meldingen blijven zichtbaar in kaart en widget. Kritieke meldingen kunnen dit omzeilen.",
+        "description": "In de stille modus worden geen pushberichten verstuurd; meldingen blijven zichtbaar in kaart en widget. Kritieke meldingen kunnen dit omzeilen.\n\nNa een geplande herstart van Home Assistant melden integraties vaak even “offline”. Met de optie om tegen te houden gaat er in de gekozen tijd na de start geen push uit; problemen die daarna nog bestaan, worden dan alsnog bezorgd. Na een crash of stroomstoring komen meldingen zoals voorheen direct.",
         "data": {
           "silent_mode": "Stille modus (geen pushberichten)",
           "critical_bypass": "Kritieke toch bezorgen",
+          "restart_mute": "Push na geplande herstart tegenhouden",
+          "restart_grace": "Wachttijd na de start (seconden)",
           "history_days": "Geschiedenis bewaren (dagen)",
           "history_max": "Geschiedenis: maximaal (items)"
         }

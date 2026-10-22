@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notification Center {version}",
+        "title": "Notification Center",
         "description": "Versión {version}. {update_info}\n\nUn perfil agrupa un nombre y un destino de notificación. Si cambias de teléfono, solo cambia el destino del perfil: la tarjeta y las automatizaciones siguen igual.",
         "menu_options": {
           "add_recipient": "Añadir perfil",
@@ -54,10 +54,12 @@
       },
       "settings": {
         "title": "Modo silencioso e historial",
-        "description": "En modo silencioso no se envían notificaciones push; los mensajes siguen visibles en la tarjeta y el widget. Los críticos pueden saltárselo.",
+        "description": "En modo silencioso no se envían notificaciones push; los mensajes siguen visibles en la tarjeta y el widget. Los mensajes críticos pueden saltárselo.\n\nTras un reinicio planificado de Home Assistant, las integraciones suelen informar brevemente de «sin conexión». Con la opción de retención no se envía ningún push durante el tiempo elegido tras el inicio; los problemas que siguen existiendo después se entregan entonces. Tras un fallo o un corte de luz, los mensajes llegan de inmediato como antes.",
         "data": {
           "silent_mode": "Modo silencioso (sin notificaciones push)",
           "critical_bypass": "Entregar igualmente los críticos",
+          "restart_mute": "Retener los push tras un reinicio planificado",
+          "restart_grace": "Tiempo de retención tras el inicio (segundos)",
           "history_days": "Conservar historial (días)",
           "history_max": "Historial: como máximo (entradas)"
         }

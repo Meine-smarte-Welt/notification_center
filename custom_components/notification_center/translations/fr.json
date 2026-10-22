@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notification Center {version}",
+        "title": "Notification Center",
         "description": "Version {version}. {update_info}\n\nUn profil regroupe un nom et une cible de notification. Si tu changes de téléphone, seule la cible du profil change - la carte et les automatisations restent intactes.",
         "menu_options": {
           "add_recipient": "Ajouter un profil",
@@ -54,10 +54,12 @@
       },
       "settings": {
         "title": "Mode silencieux et historique",
-        "description": "En mode silencieux, aucune notification push n’est envoyée ; les messages restent visibles dans la carte et le widget. Les messages critiques peuvent le contourner.",
+        "description": "En mode silencieux, aucune notification push n’est envoyée ; les messages restent visibles dans la carte et le widget. Les messages critiques peuvent le contourner.\n\nAprès un redémarrage planifié de Home Assistant, les intégrations signalent souvent brièvement « hors ligne ». Avec l’option de retenue, aucun push n’est envoyé pendant la durée choisie après le démarrage ; les problèmes qui persistent ensuite sont alors transmis. Après un plantage ou une coupure de courant, les messages arrivent immédiatement comme avant.",
         "data": {
           "silent_mode": "Mode silencieux (pas de notifications push)",
           "critical_bypass": "Distribuer quand même les critiques",
+          "restart_mute": "Retenir les push après un redémarrage planifié",
+          "restart_grace": "Délai de retenue après le démarrage (secondes)",
           "history_days": "Conserver l’historique (jours)",
           "history_max": "Historique : au maximum (entrées)"
         }

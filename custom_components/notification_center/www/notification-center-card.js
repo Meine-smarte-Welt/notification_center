@@ -1,4 +1,4 @@
-// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 0d4eebf4471bd0c2ce2a7140ec2d2c28bc33e5d43f8b0741a5905dd03d114171
+// SHA256 (Inhalt ab Zeile 2, d.h. dieser Datei ohne diese erste Zeile): 3324e7eb0e72b203b8a4fea64cdeaa5951bde97bc9530f0e0cdbc316f89d3206
 /**
  * notification-center-card
  *
@@ -21,7 +21,7 @@
  * Der Profil-Sensor (entities.recipients) liefert die Empfänger-Profile.
  */
 
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.2.1";
 const DEFAULT_TITLE = "Notification Center";
 const DEFAULT_ICON = "mdi:bell-badge-outline";
 const DEFAULT_MESSAGES_ENTITY = "sensor.notification_center_meldungen";
@@ -163,6 +163,8 @@ const I18N = {
     "set_options": "Optionen",
     "opt_silent": "Lautlos-Modus",
     "opt_silent_hint": "Keine Push-Nachrichten. Meldungen bleiben in Karte und Widget sichtbar.",
+    "opt_restart_mute": "Push nach geplantem Neustart zurückhalten",
+    "opt_restart_mute_hint": "Nach einem kontrollierten Neustart gehen {n} Sekunden lang keine Push-Nachrichten raus (Integrationen melden beim Start oft kurz „offline“). Besteht ein Problem danach noch, kommt der Push dann. Nach Absturz oder Stromausfall kommt er sofort.",
     "opt_bypass": "Kritische trotzdem zustellen",
     "opt_delivery": "Push-Zustellung je Dringlichkeit",
     "opt_no_profiles": "Lege zuerst Empfänger-Profile an (Konfigurieren).",
@@ -180,6 +182,7 @@ const I18N = {
     "ev_ack": "Quittiert",
     "ev_push": "Push",
     "ev_push_silent": "Push zurückgehalten (Lautlos-Modus)",
+    "ev_push_restart": "Push zurückgehalten (Neustart)",
     "w_more": "weitere",
     "w_done": "Alles erledigt",
     "w_all": "Alle zusammen",
@@ -377,6 +380,8 @@ const I18N = {
     "set_options": "Options",
     "opt_silent": "Silent mode",
     "opt_silent_hint": "No push messages. Messages stay visible in the card and widget.",
+    "opt_restart_mute": "Hold back push after a planned restart",
+    "opt_restart_mute_hint": "After a controlled restart no push messages are sent for {n} seconds (integrations often report “offline” briefly at start). If a problem still exists afterwards, the push follows then. After a crash or power loss it is sent immediately.",
     "opt_bypass": "Still deliver critical messages",
     "opt_delivery": "Push delivery by urgency",
     "opt_no_profiles": "Add recipient profiles first (Configure).",
@@ -394,6 +399,7 @@ const I18N = {
     "ev_ack": "Acknowledged",
     "ev_push": "Push",
     "ev_push_silent": "Push held back (silent mode)",
+    "ev_push_restart": "Push held back (restart)",
     "w_more": "more",
     "w_done": "All done",
     "w_all": "All together",
@@ -591,6 +597,8 @@ const I18N = {
     "set_options": "Opties",
     "opt_silent": "Stille modus",
     "opt_silent_hint": "Geen pushberichten. Meldingen blijven zichtbaar in kaart en widget.",
+    "opt_restart_mute": "Push na geplande herstart tegenhouden",
+    "opt_restart_mute_hint": "Na een gecontroleerde herstart worden {n} seconden lang geen pushberichten verstuurd (integraties melden bij de start vaak even “offline”). Bestaat een probleem daarna nog, dan volgt de push alsnog. Na een crash of stroomstoring komt hij direct.",
     "opt_bypass": "Kritieke toch bezorgen",
     "opt_delivery": "Pushbezorging per urgentie",
     "opt_no_profiles": "Maak eerst ontvangersprofielen aan (Configureren).",
@@ -608,6 +616,7 @@ const I18N = {
     "ev_ack": "Bevestigd",
     "ev_push": "Push",
     "ev_push_silent": "Push tegengehouden (stille modus)",
+    "ev_push_restart": "Push tegengehouden (herstart)",
     "w_more": "meer",
     "w_done": "Alles gedaan",
     "w_all": "Alles samen",
@@ -805,6 +814,8 @@ const I18N = {
     "set_options": "Options",
     "opt_silent": "Mode silencieux",
     "opt_silent_hint": "Pas de notifications push. Les messages restent visibles dans la carte et le widget.",
+    "opt_restart_mute": "Retenir les push après un redémarrage planifié",
+    "opt_restart_mute_hint": "Après un redémarrage contrôlé, aucun push n’est envoyé pendant {n} secondes (les intégrations signalent souvent « hors ligne » au démarrage). Si un problème persiste ensuite, le push est envoyé alors. Après un plantage ou une coupure de courant, il part immédiatement.",
     "opt_bypass": "Distribuer quand même les critiques",
     "opt_delivery": "Distribution push par urgence",
     "opt_no_profiles": "Crée d’abord des profils de destinataires (Configurer).",
@@ -822,6 +833,7 @@ const I18N = {
     "ev_ack": "Acquitté",
     "ev_push": "Push",
     "ev_push_silent": "Push retenu (mode silencieux)",
+    "ev_push_restart": "Push retenu (redémarrage)",
     "w_more": "de plus",
     "w_done": "Tout est fait",
     "w_all": "Tous ensemble",
@@ -1019,6 +1031,8 @@ const I18N = {
     "set_options": "Opciones",
     "opt_silent": "Modo silencioso",
     "opt_silent_hint": "Sin notificaciones push. Los mensajes siguen visibles en la tarjeta y el widget.",
+    "opt_restart_mute": "Retener los push tras un reinicio planificado",
+    "opt_restart_mute_hint": "Tras un reinicio controlado no se envían push durante {n} segundos (las integraciones suelen informar brevemente de «sin conexión» al iniciar). Si el problema sigue después, el push se envía entonces. Tras un fallo o un corte de luz se envía de inmediato.",
     "opt_bypass": "Entregar igualmente los críticos",
     "opt_delivery": "Entrega push por urgencia",
     "opt_no_profiles": "Primero crea perfiles de destinatario (Configurar).",
@@ -1036,6 +1050,7 @@ const I18N = {
     "ev_ack": "Confirmado",
     "ev_push": "Push",
     "ev_push_silent": "Push retenido (modo silencioso)",
+    "ev_push_restart": "Push retenido (reinicio)",
     "w_more": "más",
     "w_done": "Todo listo",
     "w_all": "Todos juntos",
@@ -2434,6 +2449,8 @@ class NotificationCenterCard extends HTMLElement {
       <div class="setting-row"><span class="grow">${escapeHtml(t("opt_silent"))}</span>${this._switchHtml("silent_mode", settings.silent_mode, !editable)}</div>
       <div class="send-hint">${escapeHtml(t("opt_silent_hint"))}</div>
       <div class="setting-row"><span class="grow">${escapeHtml(t("opt_bypass"))}</span>${this._switchHtml("critical_bypass", settings.critical_bypass !== false, !editable)}</div>
+      <div class="setting-row"><span class="grow">${escapeHtml(t("opt_restart_mute"))}</span>${this._switchHtml("restart_mute", settings.restart_mute !== false, !editable)}</div>
+      <div class="send-hint">${escapeHtml(t("opt_restart_mute_hint", { n: settings.restart_grace || 180 }))}</div>
       <div class="send-label strong">${escapeHtml(t("opt_delivery"))}</div>
       ${rows}`;
   }

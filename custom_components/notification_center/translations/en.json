@@ -13,7 +13,7 @@
   "options": {
     "step": {
       "init": {
-        "title": "Notification Center {version}",
+        "title": "Notification Center",
         "description": "Version {version}. {update_info}\n\nA profile bundles a name and a notification target. When you switch phones, only the profile's target changes - cards and automations stay untouched.",
         "menu_options": {
           "add_recipient": "Add profile",
@@ -54,10 +54,12 @@
       },
       "settings": {
         "title": "Silent mode and history",
-        "description": "In silent mode no push messages are sent; messages stay visible in the card and widget. Critical messages can bypass it.",
+        "description": "In silent mode no push messages are sent; messages stay visible in the card and widget. Critical messages can bypass it.\n\nAfter a planned restart of Home Assistant, integrations often report “offline” for a moment. With the hold-back option no push is sent for the chosen time after start; problems that still exist afterwards are delivered then. After a crash or power loss, messages are sent immediately as before.",
         "data": {
           "silent_mode": "Silent mode (no push messages)",
           "critical_bypass": "Still deliver critical messages",
+          "restart_mute": "Keep push messages back after a planned restart",
+          "restart_grace": "Hold-back time after start (seconds)",
           "history_days": "Keep history (days)",
           "history_max": "History: at most (entries)"
         }

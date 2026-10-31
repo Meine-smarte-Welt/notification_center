@@ -8,6 +8,10 @@
 
 Eine Home-Assistant-Integration, die **Meldungen deiner Integrationen**, **Benachrichtigungen**, **Updates** und **Reparaturen** als eine Dashboard-Karte zusammenfasst - mit Lautlos-Modus, Push-Zustellung über Empfänger-Profile, Android-Widget und Schnellversand.
 
+<p>
+  <a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=Meine-smarte-Welt&amp;repository=notification_center&amp;category=integration"><img src="https://my.home-assistant.io/badges/hacs_repository.svg" alt="Repository in Home Assistant öffnen" height="32"></a>
+</p>
+
 ## Funktionsumfang
 
 - **Meldungen:** Integrationen (z. B. Fritz!Box, Zigbee2MQTT Manager, Matter Manager) melden Ereignisse ans Notification Center. Sortiert nach Dringlichkeit: kritisch, Warnung, Info, in Ordnung
